@@ -3,6 +3,8 @@ import random
 import sys
 import time
 import pygame
+from character import *
+from animation_player import *
 
 pygame.init()
 pygame.font.init()  # you have to call this at the start,
@@ -31,12 +33,13 @@ class Game:
         self.running = True
 
 
-
-
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
 game = Game()
+animation_player = Animation_Player()
+char = Character(animation_player)
+
 
 last_time = time.time()
 while game.running:
@@ -52,5 +55,30 @@ while game.running:
             pygame.quit()
             sys.exit()
 
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_w:
+                char.change_state('down')
+            if event.key == pygame.K_s:
+                char.change_state('down')
+            if event.key == pygame.K_a:
+                char.change_state('right')
+            if event.key == pygame.K_d:
+                char.change_state('right')
+
+            if event.key == pygame.K_u:
+                char.state = 'Moving'
+                char.direction = 'right'
+                char.play_anim = True
+                char.set_target_position(pygame.mouse.get_pos()[0])
+
+            if event.key == pygame.K_k:
+                char.state = 'Moving'
+                char.direction = 'down'
+                char.play_anim = True
+
+    char.update()
+
     clock.tick(FPS)
+    screen.fill(DARKGRAY)
+    char.draw(screen)
     pygame.display.flip()
