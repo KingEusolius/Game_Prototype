@@ -25,11 +25,21 @@ DARKGRAY = (40, 40, 40)
 LIGHTGRAY = (140, 140, 140)
 my_font = pygame.font.SysFont('New Times Roman', 30)
 
+class Game:
+    def __init__(self):
+        self.Figures = []
+        self.running = True
+
+
+
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
+game = Game()
+
 last_time = time.time()
-while True:
+while game.running:
     # delta time
     dt = time.time() - last_time
     last_time = time.time()
@@ -38,6 +48,7 @@ while True:
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            game.running = False
             pygame.quit()
             sys.exit()
 
