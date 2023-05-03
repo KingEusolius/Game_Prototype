@@ -56,25 +56,19 @@ while game.running:
             sys.exit()
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w:
-                char.change_state('down')
-            if event.key == pygame.K_s:
-                char.change_state('down')
             if event.key == pygame.K_a:
-                char.change_state('right')
-            if event.key == pygame.K_d:
-                char.change_state('right')
+                char.change_state('attack')
 
-            if event.key == pygame.K_u:
-                char.state = 'Moving'
-                char.direction = 'right'
-                char.play_anim = True
+            if event.key == pygame.K_w:
+                char.change_state('walk')
                 char.set_target_position(pygame.mouse.get_pos()[0])
 
-            if event.key == pygame.K_k:
-                char.state = 'Moving'
-                char.direction = 'down'
-                char.play_anim = True
+            if event.key == pygame.K_t:
+                char.change_state('take_hit')
+
+            if event.key == pygame.K_d:
+                char.change_state('death')
+
 
     char.update()
 
