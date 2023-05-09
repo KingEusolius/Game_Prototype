@@ -40,10 +40,59 @@ class Game:
         self.shortest_path_tiles = []
         self.calculate_new_path = True
         self.mouse_position = from_screenspace_to_gridspace(pygame.mouse.get_pos())
+        self.characters = []
+        self.characters.append(Character(animation_player, self.clear_path, pygame.math.Vector2(2, 2), 'cavalier'))
+        self.characters.append(Character(animation_player, self.clear_path, pygame.math.Vector2(4, 4), 'cavalier'))
+        self.characters.append(Character(animation_player, self.clear_path, pygame.math.Vector2(6, 4), 'cavalier'))
+        self.selected_char = None
 
-    def calculate_shortest_path_character(self, character):
+        self.mobs = []
+        self.mobs.append(Character(animation_player, self.clear_path, pygame.math.Vector2(10, 2), 'imp'))
+        self.mobs.append(Character(animation_player, self.clear_path, pygame.math.Vector2(10, 5), 'imp'))
+        self.selected_mob = None
+
+    def character_selection(self):
+        self.selected_char = None
+        self.mouse_position = from_screenspace_to_gridspace(pygame.mouse.get_pos())
+        for char in self.characters:
+            char_position = from_screenspace_to_gridspace((char.position_x, char.position_y))
+            if char_position == self.mouse_position:
+                char.is_selected(True)
+                self.selected_char = char
+            else:
+                char.is_selected(False)
+
+    def mob_selection(self):
+        self.selected_mob = None
+        self.mouse_position = from_screenspace_to_gridspace(pygame.mouse.get_pos())
+        for mob in self.mobs:
+            mob_position = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
+            if mob_position == self.mouse_position:
+                self.selected_mob = mob
+
+
+    def update(self):
+        for char in self.characters:
+            char.update()
+
+        for mob in self.mobs:
+            mob.update()
+
+    def draw_characters(self):
+        for char in self.characters:
+            char.draw(screen)
+
+        for mob in self.mobs:
+            mob.draw(screen)
+
+    def calculate_shortest_path_character(self):
         if not self.path:
             return
+        if not self.selected_char:
+            self.clear_path()
+            return
+
+        character = self.selected_char
         x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
         x_end, y_end = from_screenspace_to_gridspace(pygame.mouse.get_pos())
 
@@ -73,10 +122,24 @@ class Game:
         self.shortest_path_tiles.clear()
         self.calculate_new_path = True
 
-    def calculate_possible_paths_character(self, character):
+    def calculate_possible_paths_character(self):
+        if not self.selected_char:
+            self.clear_path()
+            return
+
+        character = self.selected_char
         self.reachable_tiles.clear()
         x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
-        self.path = breadth_first_search(self.g, vec(x_fig, y_fig), 3)
+        self.g.walls = []
+        self.g.obstacles = []
+        for char in self.characters:
+            if char != character:
+                x, y = from_screenspace_to_gridspace((char.position_x, char.position_y))
+                self.g.obstacles.append((x, y))
+        for mob in self.mobs:
+            x, y = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
+            self.g.obstacles.append((x, y))
+        self.path = breadth_first_search(self.g, vec(x_fig, y_fig), 5)
         self.reachable_tiles.append((x_fig * TILESIZE, y_fig * TILESIZE))
         for node, dir in self.path.items():
             if dir:
@@ -110,9 +173,10 @@ def from_screenspace_to_gridspace(screen_coordinates):
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
-game = Game()
 animation_player = Animation_Player()
-char = Character(animation_player, game.clear_path)
+game = Game()
+
+#char = Character(animation_player, game.clear_path)
 
 last_time = time.time()
 while game.running:
@@ -128,39 +192,53 @@ while game.running:
             pygame.quit()
             sys.exit()
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_a:
-                char.change_state('attack')
+        if event.type == pygame.MOUSEBUTTONUP:
+            if game.selected_char and event.button == 1:
+                game.selected_char.change_state('walk')
+                game.selected_char.waypoints = game.get_shortest_path()
+                if game.selected_char.waypoints:
+                    game.selected_char.set_target_position(game.selected_char.waypoints[0][0], game.selected_char.waypoints[0][1])
+                game.selected_char = None
+            elif game.selected_char and event.button == 3:
+                game.mob_selection()
+                game.selected_char.change_state('attack')
+                game.selected_mob.change_state('take_hit')
+            else:
+                game.character_selection()
+                game.calculate_possible_paths_character()
+        if 0:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:
+                    char.change_state('attack')
 
-            if event.key == pygame.K_w:
-                char.change_state('walk')
-                char.waypoints = game.get_shortest_path()
-                char.set_target_position(char.waypoints[0][0], char.waypoints[0][1])
+                if event.key == pygame.K_w:
+                    char.change_state('walk')
+                    char.waypoints = game.get_shortest_path()
+                    char.set_target_position(char.waypoints[0][0], char.waypoints[0][1])
 
-            if event.key == pygame.K_t:
-                char.change_state('take_hit')
+                if event.key == pygame.K_t:
+                    char.change_state('take_hit')
 
-            if event.key == pygame.K_d:
-                char.change_state('death')
+                if event.key == pygame.K_d:
+                    char.change_state('death')
 
-            if event.key == pygame.K_p:
-                game.calculate_possible_paths_character(char)
+                if event.key == pygame.K_p:
+                    game.calculate_possible_paths_character(char)
 
-            if event.key == pygame.K_q:
-                print(char.waypoints)
+                if event.key == pygame.K_q:
+                    print(char.waypoints)
 
     current_mouse_pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
 
     if game.mouse_position != current_mouse_pos and game.calculate_new_path:
-        game.calculate_shortest_path_character(char)
+        game.calculate_shortest_path_character()
     game.mouse_position = current_mouse_pos
 
-    char.update()
+    game.update()
     clock.tick(FPS)
     screen.fill(DARKGRAY)
     game.draw_reachable_tiles()
 
     draw_grid()
-
-    char.draw(screen)
+    game.draw_characters()
     pygame.display.flip()
