@@ -6,15 +6,28 @@ class Animation_Player:
     def __init__(self):
         print('In animation player constructor')
         state_list = ['idle', 'walk', 'attack', 'take_hit', 'death', 'dead']
-        self.classes = {'Cavalier': {}}
-        for state in state_list:
-            self.classes['Cavalier'][f'{state}'] = []
-            for pic in os.listdir(f'graphics/human/cavalier/{state}'):
-                current_img = pygame.image.load(f'graphics/human/cavalier/{state}/{pic}').convert_alpha()
-                self.classes['Cavalier'][f'{state}'].append(pygame.transform.scale(current_img, (64, 64)))
+        classes = ['cavalier', 'imp']
+        self.classes = {}
+        self.classes_outlines = {}
+        for cl in classes:
+            self.classes[f'{cl}'] = {}
+            self.classes_outlines[f'{cl}'] = {}
+            for state in state_list:
+                self.classes[f'{cl}'][f'{state}'] = []
+                self.classes_outlines[f'{cl}'][f'{state}'] = []
+                for pic in os.listdir(f'graphics/{cl}/{state}'):
+                    current_img = pygame.image.load(f'graphics/{cl}/{state}/{pic}').convert_alpha()
+                    current_img = pygame.transform.scale(current_img, (64, 64))
+                    self.classes[f'{cl}'][f'{state}'].append(current_img)
+                    self.classes_outlines[f'{cl}'][f'{state}'].append(pygame.mask.from_surface(current_img))
+
+        #print(self.classes)
 
     def get_image(self, class_name, class_state, index):
         return self.classes[class_name][class_state][index]
+
+    def get_outline(self, class_name, class_state, index):
+        return self.classes_outlines[class_name][class_state][index].outline()
 
     def is_animation_over(self, index):
         if int(index) >= 4:
