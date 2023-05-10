@@ -4,13 +4,16 @@ pygame.font.init()
 my_font = pygame.font.SysFont('New Times Roman', 30)
 
 class Character:
-    def __init__(self, anim_player, clear_path, pos, class_name):
+    def __init__(self, anim_player, clear_path, pos, class_name, spawn_item):
         self.class_name = class_name
         self.state = 'idle'
         self.direction = 'down'
         self.animation_index = 0
         self.anim_player = anim_player
         self.health = 2
+        self.speed = 4
+        self.attack_after_walk = False
+        self.target = None
 
         if class_name == 'cavalier':
             self.direction_x = 0
@@ -38,6 +41,7 @@ class Character:
         self.target_position_y = 100
 
         self.clear_path_for_game = clear_path
+        self.spawn_item = spawn_item
 
         self.selected = False
 
@@ -59,7 +63,11 @@ class Character:
             else:
                 self.clear_path_for_game()
                 self.is_selected(False)
-                self.change_state('idle')
+                if self.attack_after_walk:
+                    self.change_state('attack')
+
+                else:
+                    self.change_state('idle')
 
         elif self.state == 'attack':
             if finished:
@@ -67,7 +75,7 @@ class Character:
 
         elif self.state == 'take_hit':
             if finished:
-                self.health -= 1
+                #self.health -= 2
                 self.update_status()
                 self.change_state('idle')
                 if self.health <= 0:
@@ -75,6 +83,7 @@ class Character:
 
         elif self.state == 'death':
             if finished:
+                #self.spawn_item((self.position_x, self.position_y))
                 self.change_state('dead')
 
         elif self.state == 'dead':
@@ -88,8 +97,8 @@ class Character:
         return False
 
     def move(self, amount):
-        self.position_x += amount.x * 2
-        self.position_y += amount.y * 2
+        self.position_x += amount.x * self.speed
+        self.position_y += amount.y * self.speed
         if int(self.position_x) == int(self.waypoints[0][0]) and int(self.position_y) == int(self.waypoints[0][1]):
             del self.waypoints[0]
             if len(self.waypoints):
@@ -98,9 +107,16 @@ class Character:
     def set_target_position(self, x, y):
         self.get_direction(x, y)
 
+    def take_damage(self, amount):
+        self.health -= amount
+
     def change_state(self, state):
         self.animation_index = 0
         self.state = state
+        if self.state == 'attack':
+            self.target.change_state('take_hit')
+            self.target.take_damage(2)
+            self.target = None
 
     def get_direction(self, target_x, target_y):
         if target_x == self.position_x:
