@@ -6,7 +6,7 @@ class Animation_Player:
     def __init__(self):
         print('In animation player constructor')
         state_list = ['idle', 'walk', 'attack', 'take_hit', 'death', 'dead']
-        classes = ['cavalier', 'imp']
+        classes = ['cavalier', 'imp', 'archer']
         self.classes = {}
         self.classes_outlines = {}
         for cl in classes:
