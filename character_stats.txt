@@ -1,0 +1,4 @@
+class_name;health;attack_power;speed;long_range;attack_range;move_range
+cavalier;2;4;4;0;1;8
+imp;1;2;2;0;1;4
+archer;2;3;2;1;4;4
