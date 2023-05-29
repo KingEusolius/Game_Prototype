@@ -3,10 +3,10 @@ import os
 
 
 class Animation_Player:
-    def __init__(self):
+    def __init__(self, dictionary):
         print('In animation player constructor')
         state_list = ['idle', 'walk', 'attack', 'take_hit', 'death', 'dead']
-        classes = ['cavalier', 'imp', 'archer']
+        classes = dictionary.char_dict.keys()
         self.classes = {}
         self.classes_outlines = {}
         for cl in classes:
