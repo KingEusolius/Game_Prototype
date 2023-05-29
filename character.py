@@ -1,4 +1,5 @@
 import pygame
+import numpy as np
 
 pygame.font.init()
 my_font = pygame.font.SysFont('New Times Roman', 30)
@@ -9,7 +10,7 @@ class Character_Dictionary:
         first_line = True
         character_information = []
         self.char_dict = {}
-        with open('character_stats.txt') as f:
+        with open('character_stats.ini') as f:
             for line in f.readlines():
                 x = line.split(";")
                 if first_line:
@@ -29,7 +30,7 @@ class Character_Dictionary:
 
 
 class Character:
-    def __init__(self, anim_player, clear_path, pos, class_name, spawn_item, dictionary, calc_attack_path):
+    def __init__(self, anim_player, clear_path, pos, class_name, spawn_item, dictionary, calc_attack_path, is_mob, create_projectile, item):
         self.class_name = class_name
         self.state = 'idle'
         self.direction = 'down'
@@ -43,14 +44,19 @@ class Character:
         self.alive = True
         self.can_attack = True
         self.can_walk = True
+        self.dictionary = dictionary
         self.get_stats(dictionary)
-        if class_name == 'cavalier' or class_name == 'archer':
-            self.direction_x = 0
-        else:
+        if is_mob:
             self.direction_x = -1
+        else:
+            self.direction_x = 0
         self.direction_y = 0
 
         self.waypoints = []
+        self.skills = [None] * 4
+        self.skills_available_this_turn = [True] * 4
+        self.skills[0] = item
+        self.skills[3] = item
 
         self.img = anim_player.get_image(self.class_name, self.state, self.animation_index)
         self.stats_img = pygame.Surface((64, 64 // 4))
@@ -74,6 +80,8 @@ class Character:
         self.calc_attack_path = calc_attack_path
 
         self.selected = False
+        self.is_mob = is_mob
+        self.create_projectile = create_projectile
 
     def get_stats(self, dictionary):
         self.health = dictionary.char_dict[self.class_name]['health']
@@ -82,6 +90,7 @@ class Character:
         self.long_range = dictionary.char_dict[self.class_name]['long_range']
         self.attack_range = dictionary.char_dict[self.class_name]['attack_range']
         self.move_range = dictionary.char_dict[self.class_name]['move_range']
+        self.max_move_range = self.move_range * 1
 
     def update(self):
         self.img = self.anim_player.get_image(self.class_name, self.state, int(self.animation_index))
@@ -98,15 +107,17 @@ class Character:
                 self.move(pygame.math.Vector2(self.direction_x, self.direction_y))
             else:
                 self.clear_path_for_game()
-                self.can_walk = False
+                if self.move_range <= 0:
+                    self.can_walk = False
                 if self.deselect_after_action:
                     self.is_selected(False)
                 if self.attack_after_walk:
                     self.change_state('attack')
+                    self.attack_after_walk = False
 
                 else:
                     self.change_state('idle')
-                    if self.can_attack:
+                    if self.can_attack and not self.is_mob:
                         self.calc_attack_path(self)
 
         elif self.state == 'attack':
@@ -142,6 +153,9 @@ class Character:
     def reset_for_new_turn(self):
         self.can_attack = True
         self.can_walk = True
+        self.move_range = self.max_move_range
+        for i in range(len(self.skills_available_this_turn)):
+            self.skills_available_this_turn[i] = True
 
     def move(self, amount):
         self.position_x += amount.x * self.speed
@@ -161,10 +175,13 @@ class Character:
         self.animation_index = 0
         self.state = state
         if self.state == 'attack':
-            if self.class_name != 'archer':
+            self.get_direction(self.target.position_x, self.target.position_y)
+            if self.long_range == 0:
                 self.target.change_state('take_hit')
                 self.target.take_damage(self.attack_power)
                 self.target = None
+            else:
+                self.create_projectile(self.position_x, self.position_y, self.target, self.attack_power)
 
     def get_direction(self, target_x, target_y):
         if target_x == self.position_x:
@@ -186,8 +203,19 @@ class Character:
     def is_selected(self, value):
         self.selected = value
 
+    def find_nearest_target(self, characters):
+        nearest_char = None
+        nearest_char_distance = np.inf
+        for char in characters:
+            if char.alive:
+                if np.sqrt((self.position_x - char.position_x) ** 2 + (
+                        self.position_y - char.position_y) ** 2) < nearest_char_distance:
+                    nearest_char = char
+                    nearest_char_distance = np.sqrt(
+                        (self.position_x - char.position_x) ** 2 + (self.position_y - char.position_y) ** 2)
+        return nearest_char
+
     def update_status(self):
-        #self.stats_img = pygame.Surface((self.width, self.height // 4))
         self.stats_img.fill(self.color)
         text_surface = my_font.render(f'{self.attack_power} / {self.health}', True, (0, 0, 0))
         text_width = text_surface.get_width()
