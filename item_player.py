@@ -1,6 +1,7 @@
 import pygame
 import os
 import numpy as np
+my_font = pygame.font.SysFont('New Times Roman', 20)
 
 
 class Item_Player:
@@ -30,6 +31,7 @@ class Item:
         self.item_player = item_player
         self.item_type = item_type
         self.img = item_player.get_item_image(item_type)
+
         self.outline = item_player.get_outline(self.item_type)
         self.selected = False
         self.position_x = position[0] * 64 + np.random.randint(-32, 32)
@@ -37,11 +39,35 @@ class Item:
         self.position_z = 5
         self.velocity_z = -0.2
         self.max_speed = 4
-        self.x_vel = -0.2 * self.max_speed
-        self.y_vel = 0.1 * self.max_speed
-        self.z_vel = 8
-        self.z_vel_init = 8
+        x = np.random.randint(-6, 6) / 10.0
+        y = np.random.randint(-4, 2) / 10.0
+        self.x_vel = x * self.max_speed
+        self.y_vel = y * self.max_speed
+        self.z_vel = 6
+        self.z_vel_init = 6
         self.bounces = 5
+
+        if item_type == 'book':
+            self.particle_type = 'update'
+        else:
+            self.particle_type = 'inferno'
+
+        self.inventory_img = pygame.image.load(f'graphics/icons/{self.particle_type}.png').convert_alpha()
+        self.inventory_img = pygame.transform.scale(self.inventory_img, (64, 64))
+
+        self.upgrades = ["Damage: +5", "Health: +10", "Immune to fire"]
+        max_width = 0
+        text_surfaces = []
+        for up in self.upgrades:
+            text_surf = my_font.render(up, True, (0, 0, 0))
+            text_surfaces.append(text_surf)
+            if text_surf.get_width() > max_width:
+                max_width = text_surf.get_width()
+        self.stats_img = pygame.Surface((max_width + 5, len(self.upgrades) * 15))
+        self.stats_img.fill((200, 200, 200))
+        for idx, surf in enumerate(text_surfaces):
+            self.stats_img.blit(surf, (0, idx * 15))
+
 
     def update(self):
         if self.position_z < 0 and self.bounces > 0:
@@ -66,6 +92,7 @@ class Item:
     def check_overlap(self, position):
         self.selected = (self.position_x <= position[0] < self.position_x + 48 and self.position_y <= position[
             1] < self.position_y + 48)
+        return self.selected
 
     def draw(self, screen):
         screen.blit(self.img, (self.position_x, self.position_y - self.position_z))
@@ -74,3 +101,4 @@ class Item:
                 x = point[0] + self.position_x
                 y = point[1] + self.position_y - self.position_z
                 pygame.draw.line(screen, (255, 0, 0), (x, y), (x, y), 4)
+            screen.blit(self.stats_img, (self.position_x, self.position_y - 64))
