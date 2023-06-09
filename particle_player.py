@@ -5,7 +5,8 @@ import os
 class Particle_Player:
     def __init__(self):
         print('In particle player constructor')
-        particles = ['inferno', 'update']
+        particles = ['inferno', 'update', 'sword_update', 'spear_update', 'crossbow_update', 'horse_update',
+                     'acid_splash', 'death_ripple']
         self.particles = {}
         for pl in particles:
             self.particles[f'{pl}'] = []
@@ -41,6 +42,44 @@ class Particle:
                 if self.position_x == player.position_x and self.position_y == player.position_y:
                     player.change_state('take_hit')
                     player.class_name = player.class_name.replace("minor", "major")
+                    player.get_stats(player.dictionary)
+                    print(player.class_name)
+
+        elif particle_type == 'acid_splash' or particle_type == 'death_ripple':
+            for player in player_list:
+                if self.position_x == player.position_x and self.position_y == player.position_y:
+                    player.change_state('take_hit')
+                    player.take_damage(2)
+
+        elif particle_type == 'sword_update':
+            for player in player_list:
+                if self.position_x == player.position_x and self.position_y == player.position_y:
+                    player.change_state('take_hit')
+                    player.class_name = player.class_name.replace("peasant", "swordsman")
+                    player.get_stats(player.dictionary)
+                    print(player.class_name)
+
+        elif particle_type == 'spear_update':
+            for player in player_list:
+                if self.position_x == player.position_x and self.position_y == player.position_y:
+                    player.change_state('take_hit')
+                    player.class_name = player.class_name.replace("peasant", "pikeman")
+                    player.get_stats(player.dictionary)
+                    print(player.class_name)
+
+        elif particle_type == 'crossbow_update':
+            for player in player_list:
+                if self.position_x == player.position_x and self.position_y == player.position_y:
+                    player.change_state('take_hit')
+                    player.class_name = player.class_name.replace("peasant", "archer")
+                    player.get_stats(player.dictionary)
+                    print(player.class_name)
+
+        elif particle_type == 'horse_update':
+            for player in player_list:
+                if self.position_x == player.position_x and self.position_y == player.position_y:
+                    player.change_state('take_hit')
+                    player.class_name = "cavalier_minor"
                     player.get_stats(player.dictionary)
                     print(player.class_name)
 

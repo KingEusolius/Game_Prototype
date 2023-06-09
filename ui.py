@@ -36,15 +36,12 @@ class UI:
                 return True
         return False
 
-    def set_spot_occupied(self, index, particle_type):
-        self.item_slots[index].occupy_spot(particle_type)
+    def set_spot_occupied(self, index, particle_type, img):
+        self.item_slots[index].occupy_spot(particle_type, img)
 
     def draw(self, screen, char):
-        for idx, item in enumerate(self.inventory):
-            if item:
-                screen.blit(item.inventory_img, (self.screen_width // 2 - (self.nr_item_slots // 2 - idx) * 64, self.screen_height - 64))
-        for rect in self.item_slots:
-            rect.draw(screen)
+        for idx, rect in enumerate(self.item_slots):
+            rect.draw(screen, self.screen_width // 2 - (self.nr_item_slots // 2 - idx) * 64, self.screen_height - 64)
         self.char = char
         if char:
             for idx, item in enumerate(char.skills):
@@ -56,8 +53,8 @@ class UI:
                         screen.blit(self.gray_img, (self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64), special_flags=pygame.BLEND_RGBA_SUB)
                 else:
                     self.resource_slots[idx].free_spot()
-        for rect in self.resource_slots:
-            rect.draw(screen)
+        for idx, rect in enumerate(self.resource_slots):
+            rect.draw(screen, self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64)
 
 
 class UI_Skill:
@@ -72,10 +69,13 @@ class UI_Skill:
         self.color = (255, 255, 200)
         self.border_width = 4
         self.spawn_particle = spawn_particle
+        self.standard_img = pygame.Surface((64,64))
+        self.standard_img.fill((80, 80, 80))
+        self.img = self.standard_img
 
     def on_mouse_click(self, mouse_pos):
         if self.active and self.occupied:
-            self.spawn_particle(self.particle_type)
+            self.spawn_particle(self.particle_type, pygame.mouse.get_pos())
             self.free_spot()
             self.active = False
             self.color = (255, 255, 200)
@@ -89,13 +89,18 @@ class UI_Skill:
             self.color = (255, 255, 200)
         return False
 
-    def occupy_spot(self, particle_type):
+    def occupy_spot(self, particle_type, img):
         self.occupied = True
         self.particle_type = particle_type
+        self.img = img
 
     def free_spot(self):
         self.occupied = False
         self.particle_type = ''
+        self.img = self.standard_img
 
-    def draw(self, screen):
+    def draw(self, screen, position_x, position_y):
+        screen.blit(self.standard_img, (position_x, position_y))
+        if self.img != self.standard_img:
+            screen.blit(self.img, (position_x, position_y))
         pygame.draw.rect(screen, self.color, self.rect, self.border_width)
