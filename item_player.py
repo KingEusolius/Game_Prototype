@@ -3,11 +3,39 @@ import os
 import numpy as np
 my_font = pygame.font.SysFont('New Times Roman', 20)
 
+class Item_Dictionary:
+    def __init__(self):
+        first_line = True
+        item_information = []
+        self.item_dict = {}
+        with open('item_stats.ini') as f:
+            for line in f.readlines():
+                x = line.split(";")
+                if first_line:
+                    first_line = False
+                    for word in x:
+                        if '\n' in word:
+                            item_information.append(word.replace('\n', ''))
+                        else:
+                            item_information.append(word)
+                else:
+                    for idx, word in enumerate(x):
+                        if '\n' in word:
+                            new_word = word.replace('\n', '')
+                        else:
+                            new_word = word
+                        if idx == 0:
+                            self.item_dict[word] = {}
+                            key = new_word
+                        else:
+                            self.item_dict[key][item_information[idx]] = new_word
 
 class Item_Player:
-    def __init__(self):
+    def __init__(self, dictionary):
         print('In item player constructor')
-        items = ['spell', 'book']
+        #items = ['spell', 'book']
+        items = dictionary.item_dict.keys()
+        print(dictionary.item_dict)
         self.items = {}
         self.items_outline = {}
         for it in items:
@@ -27,7 +55,7 @@ class Item_Player:
 
 
 class Item:
-    def __init__(self, item_player, item_type, position):
+    def __init__(self, item_player, item_type, position, dictionary):
         self.item_player = item_player
         self.item_type = item_type
         self.img = item_player.get_item_image(item_type)
@@ -47,15 +75,17 @@ class Item:
         self.z_vel_init = 6
         self.bounces = 5
 
-        if item_type == 'book':
-            self.particle_type = 'update'
-        else:
-            self.particle_type = 'inferno'
+        #if item_type == 'book':
+        #    self.particle_type = 'update'
+        #else:
+        #    self.particle_type = 'inferno'
+
+        self.particle_type = dictionary.item_dict[self.item_type]['particle_type']
 
         self.inventory_img = pygame.image.load(f'graphics/icons/{self.particle_type}.png').convert_alpha()
         self.inventory_img = pygame.transform.scale(self.inventory_img, (64, 64))
 
-        self.upgrades = ["Damage: +5", "Health: +10", "Immune to fire"]
+        self.upgrades = [dictionary.item_dict[self.item_type]['upgrades']]
         max_width = 0
         text_surfaces = []
         for up in self.upgrades:
@@ -101,4 +131,4 @@ class Item:
                 x = point[0] + self.position_x
                 y = point[1] + self.position_y - self.position_z
                 pygame.draw.line(screen, (255, 0, 0), (x, y), (x, y), 4)
-            screen.blit(self.stats_img, (self.position_x, self.position_y - 64))
+            screen.blit(self.stats_img, (self.position_x, self.position_y - 16))

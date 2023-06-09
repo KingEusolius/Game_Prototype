@@ -37,6 +37,7 @@ my_font = pygame.font.SysFont('New Times Roman', 30)
 
 class Game:
     def __init__(self):
+        self.occupied_spots_by_ai = []
         self.game_celebration = False
         self.Figures = []
         self.running = True
@@ -54,15 +55,18 @@ class Game:
         self.items = []
         self.projectiles = []
         self.inventory = [None] * 4
-        self.inventory[0] = (Item(item_player, 'book', (0, 0)))
-        self.inventory[1] = (Item(item_player, 'spell', (0, 0)))
+        # self.inventory[0] = (Item(item_player, 'book', (0, 0), item_dictionary))
+        # self.inventory[1] = (Item(item_player, 'spell', (0, 0), item_dictionary))
         self.selected_char = None
         self.selected_mob = None
         self.can_ai_turn = False
         self.re_init()
         self.ui = UI(self.inventory, self.spawn_particle)
+        self.player_turn = True
+        self.level = 1
 
     def re_init(self):
+        self.level = 1
         self.characters.clear()
         self.mobs.clear()
         self.particles.clear()
@@ -70,97 +74,138 @@ class Game:
         self.projectiles.clear()
 
         self.characters.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(4, 2), 'cavalier_minor', self.spawn_item,
-                      char_dictionary, self.calculate_possible_attack_tiles, False, self.create_projectile, Item(item_player, 'spell', pygame.math.Vector2(4, 2))))
-        self.characters.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(4, 4), 'cavalier_minor', self.spawn_item,
+            Character(animation_player, self.clear_path, pygame.math.Vector2(4, 3), 'peasant_minor', self.spawn_item,
                       char_dictionary, self.calculate_possible_attack_tiles, False, self.create_projectile, None))
         self.characters.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(2, 3), 'archer_minor', self.spawn_item,
+            Character(animation_player, self.clear_path, pygame.math.Vector2(4, 5), 'peasant_minor', self.spawn_item,
                       char_dictionary, self.calculate_possible_attack_tiles, False, self.create_projectile, None))
         self.selected_char = None
 
         self.mobs.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(10, 2), 'imp_minor', self.spawn_item,
+            Character(animation_player, self.clear_path, pygame.math.Vector2(7, 3), 'skeleton_minor', self.spawn_item,
                       char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
         self.mobs.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(10, 5), 'imp_minor', self.spawn_item,
-                      char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
-        self.mobs.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(8, 3), 'imp_minor', self.spawn_item,
+            Character(animation_player, self.clear_path, pygame.math.Vector2(7, 5), 'skeleton_minor', self.spawn_item,
                       char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
         self.selected_mob = None
         self.can_ai_turn = False
         self.game_celebration = False
 
+    def level_update(self):
+        self.mobs.clear()
+        self.particles.clear()
+        self.projectiles.clear()
+        self.items.clear()
+        self.selected_char = None
+        self.selected_mob = None
+        self.can_ai_turn = False
+        self.game_celebration = False
+
+        for char in self.characters:
+            char.position_x = 4 * 64
+            char.reset_for_new_turn()
+            char.get_stats(char.dictionary)
+
+        if self.level == 2:
+            self.mobs.append(
+                Character(animation_player, self.clear_path, pygame.math.Vector2(7, 3), 'skeleton_major',
+                          self.spawn_item,
+                          char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
+            self.mobs.append(
+                Character(animation_player, self.clear_path, pygame.math.Vector2(7, 5), 'skeleton_major',
+                          self.spawn_item,
+                          char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
+
+        elif self.level == 3:
+            self.mobs.append(
+                Character(animation_player, self.clear_path, pygame.math.Vector2(9, 3), 'lich_minor',
+                          self.spawn_item,
+                          char_dictionary, self.calculate_possible_attack_tiles, True, self.spawn_particle, None))
+            self.mobs.append(
+                Character(animation_player, self.clear_path, pygame.math.Vector2(7, 5), 'imp_minor',
+                          self.spawn_item,
+                          char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
+
+    def mob_decision(self, mob, nearest_char):
+        x_fig, y_fig = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
+        x_end, y_end = from_screenspace_to_gridspace((nearest_char.position_x, nearest_char.position_y))
+        shortest_path = breadth_first_search_with_end(self.g, vec(x_end, y_end), vec(x_fig, y_fig),
+                                                      self.path)
+        goal = vec(x_end, y_end)
+        start = vec(x_fig, y_fig)
+
+        self.shortest_path_tiles.clear()
+        current = start + shortest_path[vec2int(start)]
+        x = None
+        y = None
+        while current != goal and heuristic(start, current) <= mob.move_range and heuristic(current,
+                                                                                            goal) >= mob.attack_range:
+            x = current.x * TILESIZE
+            y = current.y * TILESIZE
+            self.shortest_path_tiles.append((x, y))
+            # find next in path
+            current = current + shortest_path[vec2int(current)]
+        if x is not None and y is not None:
+            last_x, last_y = x / TILESIZE, y / TILESIZE
+            self.occupied_spots_by_ai.append((last_x, last_y))
+
+        mob.waypoints = game.get_shortest_path() * 1
+        # mob has to walk
+        if mob.waypoints:
+            mob.change_state('walk')
+            mob.actions.append('walk')
+            mob.set_target_position(mob.waypoints[0][0],
+                                    mob.waypoints[0][1])
+            # mob can attack directly after walking
+            if heuristic(vec(last_x, last_y), goal) <= mob.attack_range:
+                mob.attack_after_walk = True
+                mob.target = nearest_char
+                mob.actions.append('attack')
+            else:
+                mob.attack_after_walk = False
+        else:
+            # mob can attack directly
+            mob.target = nearest_char
+            mob.change_state('attack')
+            mob.actions.append('attack')
+
     def ai_turn(self):
         self.selected_mob = None
         self.selected_char = None
-        occupied_spots_by_ai = []
+        self.occupied_spots_by_ai.clear()
         for mob in self.mobs:
-            if mob.alive:
-                character = mob
+            mob_ready = not mob.actions
+            if mob.alive and mob_ready:
+                mob.ai_turn = True
                 self.reachable_tiles.clear()
-                x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
                 self.g.walls = []
                 self.g.obstacles = []
-                for oc in occupied_spots_by_ai:
+                for oc in self.occupied_spots_by_ai:
                     self.g.obstacles.append(oc)
-                for char in self.characters:
-                    x, y = from_screenspace_to_gridspace((char.position_x, char.position_y))
-                    # self.g.obstacles.append((x, y))
                 for mobster in self.mobs:
-                    if mobster != character:
+                    if mobster != mob:
                         x, y = from_screenspace_to_gridspace((mobster.position_x, mobster.position_y))
                         self.g.obstacles.append((x, y))
-                self.path = breadth_first_search(self.g, vec(x_fig, y_fig), 18)
-                self.reachable_tiles.append((x_fig * TILESIZE, y_fig * TILESIZE))
-                for node, dir in self.path.items():
-                    if dir:
-                        x, y = node
-                        x = x * TILESIZE
-                        y = y * TILESIZE
-                        self.reachable_tiles.append((x, y))
 
-                nearest_char = mob.find_nearest_target(self.characters)
+                self.calculate_path(mob, 18)
+
+                nearest_char = mob.find_nearest_and_weakest_target(self.characters)
 
                 if nearest_char:
-                    x_end, y_end = from_screenspace_to_gridspace((nearest_char.position_x, nearest_char.position_y))
-                    shortest_path = breadth_first_search_with_end(self.g, vec(x_end, y_end), vec(x_fig, y_fig),
-                                                                  self.path)
-                    goal = vec(x_end, y_end)
-                    start = vec(x_fig, y_fig)
-
-                    self.shortest_path_tiles.clear()
-                    current = start + shortest_path[vec2int(start)]
-                    while current != goal and heuristic(start, current) <= mob.move_range and heuristic(current, goal) >= mob.attack_range:
-                        x = current.x * TILESIZE
-                        y = current.y * TILESIZE
-                        self.shortest_path_tiles.append((x, y))
-                        # find next in path
-                        current = current + shortest_path[vec2int(current)]
-                    last_x, last_y = x / TILESIZE, y / TILESIZE
-                    occupied_spots_by_ai.append((last_x, last_y))
-
-                    mob.waypoints = game.get_shortest_path() * 1
-
-                    if mob.waypoints:
-                        mob.change_state('walk')
-                        mob.set_target_position(mob.waypoints[0][0],
-                                                mob.waypoints[0][1])
-                        if heuristic(vec(last_x, last_y), goal) <= mob.attack_range:
-                            mob.attack_after_walk = True
-                            mob.target = nearest_char
-                        else:
-                            mob.attack_after_walk = False
-                    else:
-                        mob.target = nearest_char
-                        mob.change_state('attack')
+                    self.mob_decision(mob, nearest_char)
 
         self.can_ai_turn = False
         self.clear_path()
         for char in self.characters:
             char.reset_for_new_turn()
+
+    def check_if_ai_is_finished(self):
+        finished = True
+        for mob in self.mobs:
+            if mob.ai_turn:
+                finished = False
+        if finished:
+            self.player_turn = True
 
     def create_projectile(self, start_position_x, start_position_y, target, attack_power):
         pos = (start_position_x + 32, start_position_y + 16)
@@ -207,12 +252,13 @@ class Game:
 
     def spawn_item(self, position):
         pos = from_screenspace_to_gridspace(position)
-        self.items.append(Item(item_player, 'book', pos))
-        self.items.append(Item(item_player, 'spell', pos))
+        self.items.append(Item(item_player, 'sword', pos, item_dictionary))
+        self.items.append(Item(item_player, 'crossbow', pos, item_dictionary))
 
-    def spawn_particle(self, particle_type):
-        pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
-        self.particles.append(Particle(particle_player, particle_type, pos, self.clear_particle, self.mobs, self.characters))
+    def spawn_particle(self, particle_type, position):
+        pos = from_screenspace_to_gridspace(position)
+        self.particles.append(
+            Particle(particle_player, particle_type, pos, self.clear_particle, self.mobs, self.characters))
 
     def item_pick_up(self):
         for it in self.items:
@@ -220,7 +266,7 @@ class Game:
                 i = self.inventory_find_free_spot()
                 if i <= len(self.inventory) - 1:
                     self.inventory[i] = it
-                    self.ui.set_spot_occupied(i, it.particle_type)
+                    self.ui.set_spot_occupied(i, it.particle_type, it.inventory_img)
                     self.items.remove(it)
 
     def inventory_find_free_spot(self):
@@ -287,7 +333,8 @@ class Game:
         if shortest_path:
             self.shortest_path_tiles.clear()
             current = start + shortest_path[vec2int(start)]
-            while current != goal and heuristic(start, current) <= character.move_range and len(self.shortest_path_tiles) < character.move_range - 1:
+            while current != goal and heuristic(start, current) <= character.move_range and len(
+                    self.shortest_path_tiles) < character.move_range - 1:
                 x = current.x * TILESIZE
                 y = current.y * TILESIZE
                 self.shortest_path_tiles.append((x, y))
@@ -340,11 +387,11 @@ class Game:
             self.clear_path()
             return
 
-        character = self.selected_char
         self.reachable_tiles.clear()
-        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
         self.g.walls.clear()
         self.g.obstacles.clear()
+
+        character = self.selected_char
         for char in self.characters:
             if char != character:
                 x, y = from_screenspace_to_gridspace((char.position_x, char.position_y))
@@ -352,7 +399,16 @@ class Game:
         for mob in self.mobs:
             x, y = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
             self.g.obstacles.append((x, y))
-        self.path = breadth_first_search(self.g, vec(x_fig, y_fig), character.move_range)
+
+        self.calculate_path(character)
+
+    def calculate_path(self, character, move_range=None):
+        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
+        if not move_range:
+            movement_range = character.move_range
+        else:
+            movement_range = move_range
+        self.path = breadth_first_search(self.g, vec(x_fig, y_fig), movement_range)
         self.reachable_tiles.append((x_fig * TILESIZE, y_fig * TILESIZE))
         for node, dir in self.path.items():
             if dir:
@@ -360,8 +416,6 @@ class Game:
                 x = x * TILESIZE
                 y = y * TILESIZE
                 self.reachable_tiles.append((x, y))
-
-        # self.calculate_possible_attack_tiles(character)
 
     def calculate_possible_attack_tiles(self, character):
         self.clear_path()
@@ -380,16 +434,32 @@ class Game:
     def draw_reachable_tiles(self):
         for tile in self.reachable_tiles:
             rect = pygame.Rect(tile[0], tile[1], TILESIZE, TILESIZE)
-            pygame.draw.rect(screen, LIGHTGRAY, rect)
+            pygame.draw.line(screen, DARKGRAY, rect.topleft, rect.topright, 2)
+            pygame.draw.line(screen, DARKGRAY, rect.topleft, rect.bottomleft, 2)
+            pygame.draw.line(screen, DARKGRAY, rect.topright, rect.bottomright, 2)
+            pygame.draw.line(screen, DARKGRAY, rect.bottomleft, rect.bottomright, 2)
         for idx, tile in enumerate(self.shortest_path_tiles):
             rect = pygame.Rect(tile[0], tile[1], TILESIZE, TILESIZE)
-            pygame.draw.rect(screen, LIGHTBLUE, rect)
+            pygame.draw.line(screen, LIGHTBLUE, rect.topleft, rect.topright, 2)
+            pygame.draw.line(screen, LIGHTBLUE, rect.topleft, rect.bottomleft, 2)
+            pygame.draw.line(screen, LIGHTBLUE, rect.topright, rect.bottomright, 2)
+            pygame.draw.line(screen, LIGHTBLUE, rect.bottomleft, rect.bottomright, 2)
         for tile in self.attack_tiles:
             rect = pygame.Rect(tile[0], tile[1], TILESIZE, TILESIZE)
-            pygame.draw.rect(screen, DARKRED, rect)
+            pygame.draw.line(screen, DARKRED, rect.topleft, rect.topright, 2)
+            pygame.draw.line(screen, DARKRED, rect.topleft, rect.bottomleft, 2)
+            pygame.draw.line(screen, DARKRED, rect.topright, rect.bottomright, 2)
+            pygame.draw.line(screen, DARKRED, rect.bottomleft, rect.bottomright, 2)
 
     def draw_inventory(self):
         screen.blit(self.inventory_ui, (TILESIZE * 2, TILESIZE * 5))
+
+
+def draw_background():
+    screen.blit(background_image, (0, 0))
+    # for i in range(GRIDWIDTH):
+    #    for j in range(GRIDHEIGHT):
+    #        screen.blit(background, (i * TILESIZE, j * TILESIZE))
 
 
 def draw_grid():
@@ -409,9 +479,70 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
 char_dictionary = Character_Dictionary()
+item_dictionary = Item_Dictionary()
 animation_player = Animation_Player(char_dictionary)
 particle_player = Particle_Player()
-item_player = Item_Player()
+item_player = Item_Player(item_dictionary)
+
+background = pygame.image.load("graphics/terrain/grass/17.png").convert_alpha()
+background = pygame.transform.scale(background, (64, 64))
+# background_surface = pygame.Surface()
+background_images = pygame.sprite.Group()
+background_image = pygame.image.load("First_Level.png").convert_alpha()
+background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
+
+level_two_image = pygame.image.load("Second_Level.png").convert_alpha()
+level_two_image = pygame.transform.scale(level_two_image, (WIDTH, HEIGHT))
+
+level_three_image = pygame.image.load("Third_Level.png").convert_alpha()
+level_three_image = pygame.transform.scale(level_three_image, (WIDTH, HEIGHT))
+
+overlay_image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA, 32)
+overlay_image = overlay_image.convert_alpha()
+overlay_image.fill((0, 0, 0, 0))
+overlay_alpha = 0
+bool_increment_overlay = False
+
+
+def fade_out_overlay():
+    global overlay_alpha
+    increment = 3
+    if overlay_alpha < 255 - increment:
+        overlay_alpha += increment
+    return overlay_alpha < 255 - increment
+
+
+def fade_in_overlay():
+    global overlay_alpha
+    decrement = 3
+    if overlay_alpha > decrement:
+        overlay_alpha -= decrement
+    return overlay_alpha > decrement
+
+
+fade_out = True
+fade_in = False
+
+
+def handle_level_transition(level_idx):
+    global fade_out
+    global fade_in
+    global background_image
+    global bool_increment_overlay
+    if fade_out:
+        if not fade_out_overlay():
+            fade_out = False
+            fade_in = True
+            if level_idx == 2:
+                background_image = level_two_image
+            elif level_idx == 3:
+                background_image = level_three_image
+            game.level_update()
+    if fade_in:
+        if not fade_in_overlay():
+            fade_in = False
+            bool_increment_overlay = False
+
 
 game = Game()
 mouse_down = False
@@ -437,7 +568,7 @@ while game.running:
             pygame.quit()
             sys.exit()
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.type == pygame.MOUSEBUTTONDOWN and game.player_turn:
 
             if game.game_celebration:
                 game.item_pick_up()
@@ -547,6 +678,7 @@ while game.running:
                 pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
                 game.particles.append(Particle(particle_player, 'update', pos, game.clear_particle))
             if event.key == pygame.K_a:
+                game.player_turn = False
                 game.ai_turn()
             if event.key == pygame.K_r:
                 game.re_init()
@@ -556,6 +688,15 @@ while game.running:
                 game.projectiles.append(Arrow(pos, game.mobs[1], game.characters[2].attack_power))
             if event.key == pygame.K_i:
                 game.show_inventory = not game.show_inventory
+
+            if event.key == pygame.K_n:
+                game.level += 1
+                #game.level_update()
+                bool_increment_overlay = True
+                fade_out = True
+                fade_in = False
+            if event.key == pygame.K_o:
+                bool_increment_overlay = True
 
     current_mouse_pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
 
@@ -578,10 +719,16 @@ while game.running:
     game.update()
     clock.tick(FPS)
     screen.fill(DARKGRAY)
+    draw_background()
     game.draw_reachable_tiles()
 
-    draw_grid()
     game.draw_characters()
+
+    if bool_increment_overlay:
+        handle_level_transition(game.level)
+        overlay_image.fill((0, 0, 0, overlay_alpha))
+        screen.blit(overlay_image, (0, 0))
+
     game.draw_ui()
 
     if mouse_down:
@@ -608,13 +755,17 @@ while game.running:
     if victory:
         text_surface = game_over_font.render(f'Victory', True, (0, 255, 0))
         screen.blit(text_surface, (
-        screen.get_width() // 2 - text_surface.get_width() // 2, screen.get_height() // 2 - text_surface.get_height()))
+            screen.get_width() // 2 - text_surface.get_width() // 2,
+            screen.get_height() // 2 - text_surface.get_height()))
 
     if defeat:
         text_surface = game_over_font.render(f'Defeat', True, (255, 0, 0))
         screen.blit(text_surface,
                     (screen.get_width() // 2 - text_surface.get_width() // 2,
                      screen.get_height() // 2 - text_surface.get_height()))
+
+    if not game.player_turn:
+        game.check_if_ai_is_finished()
 
     if mouse_down:
         screen.blit(mouse_img, pygame.mouse.get_pos() - pygame.math.Vector2(16, 16))
