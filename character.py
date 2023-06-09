@@ -1,9 +1,15 @@
 import pygame
 import numpy as np
+from pathfinding import heuristic, vec, vec2int
 
 pygame.font.init()
 my_font = pygame.font.SysFont('New Times Roman', 30)
 game_over_font = pygame.font.SysFont('Verdana', 60)
+
+def from_screenspace_to_gridspace(screen_coordinates):
+    x_grid = screen_coordinates[0] // 64
+    y_grid = screen_coordinates[1] // 64
+    return x_grid, y_grid
 
 class Character_Dictionary:
     def __init__(self):
@@ -82,6 +88,9 @@ class Character:
         self.selected = False
         self.is_mob = is_mob
         self.create_projectile = create_projectile
+        self.ai_turn = False
+        self.actions = []
+        self.finished = False
 
     def get_stats(self, dictionary):
         self.health = dictionary.char_dict[self.class_name]['health']
@@ -100,35 +109,42 @@ class Character:
         finished = self.play_animation()
 
         self.state_transition_handling(finished)
+        if self.ai_turn and not self.actions:
+            self.ai_turn = False
+
+        if not self.ai_turn and not self.check_if_turn_is_over():
+            self.finished = True
 
     def state_transition_handling(self, finished):
         if self.state == 'walk':
             if len(self.waypoints) > 0:
                 self.move(pygame.math.Vector2(self.direction_x, self.direction_y))
             else:
+                if self.is_mob:
+                    self.actions.pop(0)
                 self.clear_path_for_game()
                 if self.move_range <= 0:
                     self.can_walk = False
                 if self.deselect_after_action:
                     self.is_selected(False)
+
                 if self.attack_after_walk:
                     self.change_state('attack')
                     self.attack_after_walk = False
-
                 else:
                     self.change_state('idle')
                     if self.can_attack and not self.is_mob:
                         self.calc_attack_path(self)
 
         elif self.state == 'attack':
-
             if finished:
+                if self.is_mob:
+                    self.actions.pop(0)
                 self.can_attack = False
                 self.change_state('idle')
 
         elif self.state == 'take_hit':
             if finished:
-                #self.health -= 2
                 self.update_status()
                 self.change_state('idle')
                 if self.health <= 0:
@@ -136,7 +152,6 @@ class Character:
 
         elif self.state == 'death':
             if finished:
-                #self.spawn_item((self.position_x, self.position_y))
                 self.change_state('dead')
                 self.alive = False
 
@@ -156,6 +171,9 @@ class Character:
         self.move_range = self.max_move_range
         for i in range(len(self.skills_available_this_turn)):
             self.skills_available_this_turn[i] = True
+
+    def check_if_turn_is_over(self):
+        return self.can_attack or self.can_walk
 
     def move(self, amount):
         self.position_x += amount.x * self.speed
@@ -181,7 +199,10 @@ class Character:
                 self.target.take_damage(self.attack_power)
                 self.target = None
             else:
-                self.create_projectile(self.position_x, self.position_y, self.target, self.attack_power)
+                if "lich" in self.class_name:
+                    self.create_projectile("death_ripple", (self.target.position_x, self.target.position_y))
+                else:
+                    self.create_projectile(self.position_x, self.position_y, self.target, self.attack_power)
 
     def get_direction(self, target_x, target_y):
         if target_x == self.position_x:
@@ -206,13 +227,40 @@ class Character:
     def find_nearest_target(self, characters):
         nearest_char = None
         nearest_char_distance = np.inf
+        x_self, y_self = from_screenspace_to_gridspace((self.position_x, self.position_y))
         for char in characters:
-            if char.alive:
-                if np.sqrt((self.position_x - char.position_x) ** 2 + (
-                        self.position_y - char.position_y) ** 2) < nearest_char_distance:
+            if char.health > 0:
+                x_char, y_char = from_screenspace_to_gridspace((char.position_x, char.position_y))
+                decision_value = heuristic(vec(x_self, y_self), vec(x_char, y_char))
+                if decision_value < nearest_char_distance:
                     nearest_char = char
-                    nearest_char_distance = np.sqrt(
-                        (self.position_x - char.position_x) ** 2 + (self.position_y - char.position_y) ** 2)
+                    nearest_char_distance = decision_value
+        return nearest_char
+
+    def find_nearest_and_strongest_target(self, characters):
+        nearest_char = None
+        nearest_char_distance = np.inf
+        x_self, y_self = from_screenspace_to_gridspace((self.position_x, self.position_y))
+        for char in characters:
+            if char.health > 0:
+                x_char, y_char = from_screenspace_to_gridspace((char.position_x, char.position_y))
+                decision_value = heuristic(vec(x_self, y_self), vec(x_char, y_char)) - char.health
+                if decision_value < nearest_char_distance:
+                    nearest_char = char
+                    nearest_char_distance = decision_value
+        return nearest_char
+
+    def find_nearest_and_weakest_target(self, characters):
+        nearest_char = None
+        nearest_char_distance = np.inf
+        x_self, y_self = from_screenspace_to_gridspace((self.position_x, self.position_y))
+        for char in characters:
+            if char.health > 0:
+                x_char, y_char = from_screenspace_to_gridspace((char.position_x, char.position_y))
+                decision_value = heuristic(vec(x_self, y_self), vec(x_char, y_char)) + char.health
+                if decision_value < nearest_char_distance:
+                    nearest_char = char
+                    nearest_char_distance = decision_value
         return nearest_char
 
     def update_status(self):
