@@ -64,6 +64,22 @@ class Game:
         self.ui = UI(self.inventory, self.spawn_particle)
         self.player_turn = True
         self.level = 1
+        self.background_image = pygame.image.load("First_Level.png").convert_alpha()
+        self.background_image = pygame.transform.scale(self.background_image, (WIDTH, HEIGHT))
+
+        self.level_two_image = pygame.image.load("Second_Level.png").convert_alpha()
+        self.level_two_image = pygame.transform.scale(self.level_two_image, (WIDTH, HEIGHT))
+
+        self.level_three_image = pygame.image.load("Third_Level.png").convert_alpha()
+        self.level_three_image = pygame.transform.scale(self.level_three_image, (WIDTH, HEIGHT))
+
+        self.overlay_image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA, 32)
+        self.overlay_image = self.overlay_image.convert_alpha()
+        self.overlay_image.fill((0, 0, 0, 0))
+        self.overlay_alpha = 0
+        self.bool_increment_overlay = False
+        self.fade_out = True
+        self.fade_in = False
 
     def re_init(self):
         self.level = 1
@@ -90,6 +106,137 @@ class Game:
         self.selected_mob = None
         self.can_ai_turn = False
         self.game_celebration = False
+
+    def input_handling(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.MOUSEBUTTONDOWN and self.player_turn:
+
+                if self.game_celebration:
+                    self.item_pick_up()
+
+                if self.ui.on_mouse_click(pygame.mouse.get_pos()):
+                    pass
+                elif self.selected_char and event.button == 1:
+                    state = self.mouse_selection()
+                    # click on terrain
+                    if state == 0:
+                        if self.selected_char.can_walk:
+                            self.selected_char.change_state('walk')
+                            self.selected_char.waypoints = self.get_shortest_path()
+                            if self.selected_char.waypoints:
+                                self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
+                                                                       self.selected_char.waypoints[0][1])
+                                self.selected_char.move_range -= len(self.selected_char.waypoints)
+                    # click on other character
+                    elif state == 1:
+                        self.clear_path()
+                        self.character_selection()
+                        if self.selected_char:
+                            if self.selected_char.can_walk:
+                                self.calculate_possible_paths_character()
+                            elif self.selected_char.can_attack:
+                                self.calculate_possible_attack_tiles(self.selected_char)
+                        self.calc_if_enemy_in_range()
+                    # click on enemy
+                    elif state == 2 and self.selected_char.can_attack:
+                        self.mob_selection()
+                        # short range units
+                        if self.selected_char.long_range == 0:
+                            self.selected_char.change_state('walk')
+                            self.selected_char.waypoints = self.get_shortest_path()
+                            if self.selected_char.waypoints:
+                                self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
+                                                                       self.selected_char.waypoints[0][1])
+                                self.selected_char.move_range -= len(self.selected_char.waypoints)
+                            length_waypoints = len(self.selected_char.waypoints)
+                            # unit must walk up to enemy
+                            if length_waypoints:
+                                last_x, last_y = self.selected_char.waypoints[length_waypoints - 1][0], \
+                                                 self.selected_char.waypoints[length_waypoints - 1][1]
+                                mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
+                                last_x, last_y = from_screenspace_to_gridspace((last_x, last_y))
+                                mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
+                                if heuristic(vec(last_x, last_y), vec(mob_x, mob_y)) <= self.selected_char.attack_range:
+                                    self.selected_char.attack_after_walk = True
+                                    self.selected_char.target = self.selected_mob
+                                    self.selected_mob.in_range = False
+                                    self.selected_char.deselect_after_action = True
+                                    self.selected_char.is_selected(False)
+                                    self.selected_char = None
+                            else:
+                                char_x, char_y = self.selected_char.position_x, \
+                                                 self.selected_char.position_y
+                                mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
+                                char_x, char_y = from_screenspace_to_gridspace((char_x, char_y))
+                                mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
+                                if heuristic(vec(char_x, char_y), vec(mob_x, mob_y)) <= self.selected_char.attack_range:
+                                    self.selected_char.target = self.selected_mob
+                                    self.selected_mob.in_range = False
+                                    self.selected_char.change_state('attack')
+                                    self.selected_char.deselect_after_action = True
+                                    self.selected_char.is_selected(False)
+                                    self.clear_path()
+                                    self.selected_char = None
+                        # long range unit
+                        else:
+                            char_x, char_y = self.selected_char.position_x, \
+                                             self.selected_char.position_y
+                            mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
+                            char_x, char_y = from_screenspace_to_gridspace((char_x, char_y))
+                            mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
+                            if heuristic(vec(char_x, char_y), vec(mob_x, mob_y)) <= self.selected_char.attack_range:
+                                self.selected_char.target = self.selected_mob
+                                self.selected_char.change_state('attack')
+
+                                self.selected_char.deselect_after_action = True
+                                self.selected_char.is_selected(False)
+                                self.clear_path()
+                                self.selected_mob.in_range = False
+                                self.selected_char = None
+
+                elif event.button == 3:
+                    self.clear_path()
+                    self.selected_char = None
+                    self.selected_mob = None
+                    for char in self.characters:
+                        char.is_selected(False)
+                    for mob in self.mobs:
+                        mob.in_range = False
+                else:
+                    self.clear_path()
+                    self.character_selection()
+                    if self.selected_char:
+                        if self.selected_char.can_walk:
+                            self.calculate_possible_paths_character()
+                        elif self.selected_char.can_attack:
+                            self.calculate_possible_attack_tiles(self.selected_char)
+                    self.calc_if_enemy_in_range()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
+                    self.particles.append(Particle(particle_player, 'inferno', pos, self.clear_particle))
+                if event.key == pygame.K_u:
+                    pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
+                    self.particles.append(Particle(particle_player, 'update', pos, self.clear_particle))
+                if event.key == pygame.K_a:
+                    self.player_turn = False
+                    self.ai_turn()
+                if event.key == pygame.K_r:
+                    self.re_init()
+                if event.key == pygame.K_b:
+                    pos = (self.characters[2].position_x + 32, self.characters[2].position_y + 32)
+                    self.characters[2].change_state('attack')
+                    self.projectiles.append(Arrow(pos, self.mobs[1], self.characters[2].attack_power))
+                if event.key == pygame.K_n:
+                    self.level += 1
+                    self.bool_increment_overlay = True
+                    self.fade_out = True
+                    self.fade_in = False
 
     def level_update(self):
         self.mobs.clear()
@@ -454,12 +601,36 @@ class Game:
     def draw_inventory(self):
         screen.blit(self.inventory_ui, (TILESIZE * 2, TILESIZE * 5))
 
+    def draw_background(self):
+        screen.blit(self.background_image, (0, 0))
 
-def draw_background():
-    screen.blit(background_image, (0, 0))
-    # for i in range(GRIDWIDTH):
-    #    for j in range(GRIDHEIGHT):
-    #        screen.blit(background, (i * TILESIZE, j * TILESIZE))
+    def fade_out_overlay(self):
+        increment = 3
+        if self.overlay_alpha < 255 - increment:
+            self.overlay_alpha += increment
+        return self.overlay_alpha < 255 - increment
+
+    def fade_in_overlay(self):
+        decrement = 3
+        if self.overlay_alpha > decrement:
+            self.overlay_alpha -= decrement
+        return self.overlay_alpha > decrement
+
+    def handle_level_transition(self):
+        if self.fade_out:
+            if not self.fade_out_overlay():
+                self.fade_out = False
+                self.fade_in = True
+                if self.level == 2:
+                    self.background_image = self.level_two_image
+                elif self.level == 3:
+                    self.background_image = self.level_three_image
+                self.level_update()
+        if self.fade_in:
+            if not self.fade_in_overlay():
+                self.fade_in = False
+                self.bool_increment_overlay = False
+
 
 
 def draw_grid():
@@ -484,64 +655,10 @@ animation_player = Animation_Player(char_dictionary)
 particle_player = Particle_Player()
 item_player = Item_Player(item_dictionary)
 
-background = pygame.image.load("graphics/terrain/grass/17.png").convert_alpha()
-background = pygame.transform.scale(background, (64, 64))
-# background_surface = pygame.Surface()
-background_images = pygame.sprite.Group()
-background_image = pygame.image.load("First_Level.png").convert_alpha()
-background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
-
-level_two_image = pygame.image.load("Second_Level.png").convert_alpha()
-level_two_image = pygame.transform.scale(level_two_image, (WIDTH, HEIGHT))
-
-level_three_image = pygame.image.load("Third_Level.png").convert_alpha()
-level_three_image = pygame.transform.scale(level_three_image, (WIDTH, HEIGHT))
-
-overlay_image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA, 32)
-overlay_image = overlay_image.convert_alpha()
-overlay_image.fill((0, 0, 0, 0))
-overlay_alpha = 0
-bool_increment_overlay = False
 
 
-def fade_out_overlay():
-    global overlay_alpha
-    increment = 3
-    if overlay_alpha < 255 - increment:
-        overlay_alpha += increment
-    return overlay_alpha < 255 - increment
 
 
-def fade_in_overlay():
-    global overlay_alpha
-    decrement = 3
-    if overlay_alpha > decrement:
-        overlay_alpha -= decrement
-    return overlay_alpha > decrement
-
-
-fade_out = True
-fade_in = False
-
-
-def handle_level_transition(level_idx):
-    global fade_out
-    global fade_in
-    global background_image
-    global bool_increment_overlay
-    if fade_out:
-        if not fade_out_overlay():
-            fade_out = False
-            fade_in = True
-            if level_idx == 2:
-                background_image = level_two_image
-            elif level_idx == 3:
-                background_image = level_three_image
-            game.level_update()
-    if fade_in:
-        if not fade_in_overlay():
-            fade_in = False
-            bool_increment_overlay = False
 
 
 game = Game()
@@ -562,141 +679,7 @@ while game.running:
     if dt:
         pygame.display.set_caption(str(int(1 / dt)))
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            game.running = False
-            pygame.quit()
-            sys.exit()
-
-        if event.type == pygame.MOUSEBUTTONDOWN and game.player_turn:
-
-            if game.game_celebration:
-                game.item_pick_up()
-
-            if game.ui.on_mouse_click(pygame.mouse.get_pos()):
-                pass
-            elif game.selected_char and event.button == 1:
-                state = game.mouse_selection()
-                # click on terrain
-                if state == 0:
-                    if game.selected_char.can_walk:
-                        game.selected_char.change_state('walk')
-                        game.selected_char.waypoints = game.get_shortest_path()
-                        if game.selected_char.waypoints:
-                            game.selected_char.set_target_position(game.selected_char.waypoints[0][0],
-                                                                   game.selected_char.waypoints[0][1])
-                            game.selected_char.move_range -= len(game.selected_char.waypoints)
-                # click on other character
-                elif state == 1:
-                    game.clear_path()
-                    game.character_selection()
-                    if game.selected_char:
-                        if game.selected_char.can_walk:
-                            game.calculate_possible_paths_character()
-                        elif game.selected_char.can_attack:
-                            game.calculate_possible_attack_tiles(game.selected_char)
-                    game.calc_if_enemy_in_range()
-                # click on enemy
-                elif state == 2 and game.selected_char.can_attack:
-                    game.mob_selection()
-                    # short range units
-                    if game.selected_char.long_range == 0:
-                        game.selected_char.change_state('walk')
-                        game.selected_char.waypoints = game.get_shortest_path()
-                        if game.selected_char.waypoints:
-                            game.selected_char.set_target_position(game.selected_char.waypoints[0][0],
-                                                                   game.selected_char.waypoints[0][1])
-                            game.selected_char.move_range -= len(game.selected_char.waypoints)
-                        length_waypoints = len(game.selected_char.waypoints)
-                        # unit must walk up to enemy
-                        if length_waypoints:
-                            last_x, last_y = game.selected_char.waypoints[length_waypoints - 1][0], \
-                                             game.selected_char.waypoints[length_waypoints - 1][1]
-                            mob_x, mob_y = game.selected_mob.position_x, game.selected_mob.position_y
-                            last_x, last_y = from_screenspace_to_gridspace((last_x, last_y))
-                            mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
-                            if heuristic(vec(last_x, last_y), vec(mob_x, mob_y)) <= game.selected_char.attack_range:
-                                game.selected_char.attack_after_walk = True
-                                game.selected_char.target = game.selected_mob
-                                game.selected_mob.in_range = False
-                                game.selected_char.deselect_after_action = True
-                                game.selected_char.is_selected(False)
-                                game.selected_char = None
-                        else:
-                            char_x, char_y = game.selected_char.position_x, \
-                                             game.selected_char.position_y
-                            mob_x, mob_y = game.selected_mob.position_x, game.selected_mob.position_y
-                            char_x, char_y = from_screenspace_to_gridspace((char_x, char_y))
-                            mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
-                            if heuristic(vec(char_x, char_y), vec(mob_x, mob_y)) <= game.selected_char.attack_range:
-                                game.selected_char.target = game.selected_mob
-                                game.selected_mob.in_range = False
-                                game.selected_char.change_state('attack')
-                                game.selected_char.deselect_after_action = True
-                                game.selected_char.is_selected(False)
-                                game.clear_path()
-                                game.selected_char = None
-                    # long range unit
-                    else:
-                        char_x, char_y = game.selected_char.position_x, \
-                                         game.selected_char.position_y
-                        mob_x, mob_y = game.selected_mob.position_x, game.selected_mob.position_y
-                        char_x, char_y = from_screenspace_to_gridspace((char_x, char_y))
-                        mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
-                        if heuristic(vec(char_x, char_y), vec(mob_x, mob_y)) <= game.selected_char.attack_range:
-                            game.selected_char.target = game.selected_mob
-                            game.selected_char.change_state('attack')
-
-                            game.selected_char.deselect_after_action = True
-                            game.selected_char.is_selected(False)
-                            game.clear_path()
-                            game.selected_mob.in_range = False
-                            game.selected_char = None
-
-            elif event.button == 3:
-                game.clear_path()
-                game.selected_char = None
-                game.selected_mob = None
-                for char in game.characters:
-                    char.is_selected(False)
-                for mob in game.mobs:
-                    mob.in_range = False
-            else:
-                game.clear_path()
-                game.character_selection()
-                if game.selected_char:
-                    if game.selected_char.can_walk:
-                        game.calculate_possible_paths_character()
-                    elif game.selected_char.can_attack:
-                        game.calculate_possible_attack_tiles(game.selected_char)
-                game.calc_if_enemy_in_range()
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_p:
-                pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
-                game.particles.append(Particle(particle_player, 'inferno', pos, game.clear_particle))
-            if event.key == pygame.K_u:
-                pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
-                game.particles.append(Particle(particle_player, 'update', pos, game.clear_particle))
-            if event.key == pygame.K_a:
-                game.player_turn = False
-                game.ai_turn()
-            if event.key == pygame.K_r:
-                game.re_init()
-            if event.key == pygame.K_b:
-                pos = (game.characters[2].position_x + 32, game.characters[2].position_y + 32)
-                game.characters[2].change_state('attack')
-                game.projectiles.append(Arrow(pos, game.mobs[1], game.characters[2].attack_power))
-            if event.key == pygame.K_i:
-                game.show_inventory = not game.show_inventory
-
-            if event.key == pygame.K_n:
-                game.level += 1
-                #game.level_update()
-                bool_increment_overlay = True
-                fade_out = True
-                fade_in = False
-            if event.key == pygame.K_o:
-                bool_increment_overlay = True
+    game.input_handling()
 
     current_mouse_pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
 
@@ -719,15 +702,15 @@ while game.running:
     game.update()
     clock.tick(FPS)
     screen.fill(DARKGRAY)
-    draw_background()
+    game.draw_background()
     game.draw_reachable_tiles()
 
     game.draw_characters()
 
-    if bool_increment_overlay:
-        handle_level_transition(game.level)
-        overlay_image.fill((0, 0, 0, overlay_alpha))
-        screen.blit(overlay_image, (0, 0))
+    if game.bool_increment_overlay:
+        game.handle_level_transition()
+        game.overlay_image.fill((0, 0, 0, game.overlay_alpha))
+        screen.blit(game.overlay_image, (0, 0))
 
     game.draw_ui()
 
