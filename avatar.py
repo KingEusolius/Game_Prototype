@@ -1,0 +1,146 @@
+import pygame
+import numpy as np
+import os
+
+class Avatar_Player:
+    def __init__(self):
+        print('In avatar player constructor')
+        classes = ['men']
+        state_list = ['right']
+        self.classes = {}
+        #self.classes_outlines = {}
+        for cl in classes:
+            self.classes[f'{cl}'] = {}
+            #self.classes_outlines[f'{cl}'] = {}
+            for state in state_list:
+                self.classes[f'{cl}'][f'{state}'] = []
+                #self.classes_outlines[f'{cl}'][f'{state}'] = []
+                for pic in os.listdir(f'graphics/heroes/{cl}/{state}'):
+                    current_img = pygame.image.load(f'graphics/heroes/{cl}/{state}/{pic}').convert_alpha()
+                    current_img = pygame.transform.scale(current_img, (32, 32))
+                    self.classes[f'{cl}'][f'{state}'].append(current_img)
+                    #self.classes_outlines[f'{cl}'][f'{state}'].append(pygame.mask.from_surface(current_img))
+
+        #print(self.classes)
+
+    def get_image(self, class_name, class_state, index):
+        return self.classes[class_name][class_state][index]
+
+class Avatar:
+    def __init__(self, avatar_player, class_name):
+        self.size = 32
+        self.position_x = 1 * self.size
+        self.position_y = 1 * self.size
+        self.avatar_player = avatar_player
+        self.class_name = class_name
+        self.state = 'right'
+        self.animation_index = 0
+        self.img = avatar_player.get_image(self.class_name, self.state, self.animation_index)
+        self.direction_x = 0
+        self.direction_y = 0
+        self.speed = 4
+        self.image_direction = self.direction_x
+
+    def handle_input(self, keys):
+        direction_x = 0
+        direction_y = 0
+
+        if keys[pygame.K_d]:
+            direction_x = 1
+        if keys[pygame.K_a]:
+            direction_x = -1
+        if keys[pygame.K_s]:
+            direction_y = 1
+        if keys[pygame.K_w]:
+            direction_y = -1
+
+        self.dir_length = np.sqrt(direction_x**2 + direction_y**2)
+
+        if self.dir_length:
+            self.direction_x = direction_x / self.dir_length
+            self.direction_y = direction_y / self.dir_length
+            self.check_image_direction()
+        else:
+            self.direction_x = 0
+            self.direction_y = 0
+            self.animation_index = 0
+
+    def update(self):
+        if self.dir_length != 0:
+            self.play_animation()
+        self.img = self.avatar_player.get_image(self.class_name, self.state, int(self.animation_index))
+        if self.image_direction < 0:
+            self.img = pygame.transform.flip(self.img, True, False)
+        self.position_x += (self.direction_x * self.speed)
+        self.position_y += (self.direction_y * self.speed)
+
+    def check_image_direction(self):
+        if self.direction_x != 0:
+            self.image_direction = self.direction_x
+
+    def play_animation(self):
+        self.animation_index += 0.1
+        if self.animation_index >= 4:
+            self.animation_index = 0
+
+    def draw(self, screen):
+        screen.blit(self.img, (self.position_x, self.position_y))
+
+
+
+class Avatar_Enemies_Player:
+    def __init__(self):
+        print('In avatar enemies player constructor')
+        classes = ['imp_minor', 'imp_major']
+        state_list = ['idle', 'dead']
+        self.classes = {}
+        self.classes_outlines = {}
+        for cl in classes:
+            self.classes[f'{cl}'] = {}
+            self.classes_outlines[f'{cl}'] = {}
+            for state in state_list:
+                self.classes[f'{cl}'][f'{state}'] = []
+                self.classes_outlines[f'{cl}'][f'{state}'] = []
+                for pic in os.listdir(f'graphics/units/{cl}/{state}'):
+                    current_img = pygame.image.load(f'graphics/units/{cl}/{state}/{pic}').convert_alpha()
+                    current_img = pygame.transform.scale(current_img, (32, 32))
+                    self.classes[f'{cl}'][f'{state}'].append(current_img)
+                    self.classes_outlines[f'{cl}'][f'{state}'].append(pygame.mask.from_surface(current_img))
+
+        #print(self.classes)
+
+    def get_image(self, class_name, class_state, index):
+        return self.classes[class_name][class_state][index]
+
+
+class Avatar_Enemies:
+    def __init__(self, avatar_enemies_player, pos_x, pos_y, class_name):
+        self.position_x = pos_x
+        self.position_y = pos_y
+        self.state = 'idle'
+        self.class_name = class_name
+        self.avatar_enemies_player = avatar_enemies_player
+        self.animation_index = 0
+        self.img = pygame.image.load("graphics/units/imp_minor/idle/0.png").convert_alpha()
+        self.img = pygame.transform.scale(self.img, (32, 32))
+        self.rect = self.img.get_rect()
+        self.rect.x = self.position_x
+        self.rect.y = self.position_y
+        self.defeated = False
+
+    def update(self):
+        self.play_animation()
+        self.img = self.avatar_enemies_player.get_image(self.class_name, self.state, int(self.animation_index))
+
+    def play_animation(self):
+        self.animation_index += 0.1
+        if self.animation_index >= len(self.avatar_enemies_player.classes[self.class_name][self.state]):
+            self.animation_index = 0
+
+    def set_defeated(self):
+        self.defeated = True
+        self.state = 'dead'
+
+    def draw(self, screen):
+        screen.blit(self.img, (self.position_x, self.position_y))
+        #pygame.draw.rect(screen, (255, 0, 0), self.rect)
