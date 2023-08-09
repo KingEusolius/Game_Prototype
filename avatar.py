@@ -40,6 +40,7 @@ class Avatar:
         self.direction_y = 0
         self.speed = 4
         self.image_direction = self.direction_x
+        self.dir_length = 0.01
 
     def handle_input(self, keys):
         direction_x = 0
@@ -114,26 +115,29 @@ class Avatar_Enemies_Player:
 
 
 class Avatar_Enemies:
-    def __init__(self, avatar_enemies_player, pos_x, pos_y, class_name):
+    def __init__(self, avatar_enemies_player, pos_x, pos_y, class_name, mobs):
         self.position_x = pos_x
         self.position_y = pos_y
         self.state = 'idle'
         self.class_name = class_name
         self.avatar_enemies_player = avatar_enemies_player
-        self.animation_index = 0
-        self.img = pygame.image.load("graphics/units/imp_minor/idle/0.png").convert_alpha()
+        rand_number = np.random.randint(0, 400)
+        self.animation_index = rand_number / 400
+        rand_number = np.random.randint(0, 4)
+        self.img = pygame.image.load(f"graphics/units/{class_name}/idle/{rand_number}.png").convert_alpha()
         self.img = pygame.transform.scale(self.img, (32, 32))
         self.rect = self.img.get_rect()
         self.rect.x = self.position_x
         self.rect.y = self.position_y
         self.defeated = False
+        self.mobs = mobs
 
     def update(self):
         self.play_animation()
         self.img = self.avatar_enemies_player.get_image(self.class_name, self.state, int(self.animation_index))
 
     def play_animation(self):
-        self.animation_index += 0.1
+        self.animation_index += 0.025
         if self.animation_index >= len(self.avatar_enemies_player.classes[self.class_name][self.state]):
             self.animation_index = 0
 
