@@ -23,6 +23,9 @@ class UI:
         for i in range(self.nr_resource_slots):
             self.resource_slots.append(UI_Skill(self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - i) * 64, spawn_particle, i, 64))
 
+    def set_inventory(self, inventory):
+        self.inventory = inventory
+
     def on_mouse_click(self, mouse_pos):
         for rect in self.item_slots:
             if rect.on_mouse_click(mouse_pos):

@@ -18,6 +18,7 @@ class Overworld(GameClass):
                 sys.exit()
 
             if self.input_handling_allowed:
+                # debug code
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         self.trigger_transition()
@@ -26,6 +27,7 @@ class Overworld(GameClass):
                 self.avatar.handle_input(keys)
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
+                    # pack into own function
                     for enemy in self.enemies:
                         if enemy.rect.collidepoint(pygame.mouse.get_pos()) and not enemy.defeated:
                             self.trigger_transition()

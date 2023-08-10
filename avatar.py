@@ -27,7 +27,7 @@ class Avatar_Player:
         return self.classes[class_name][class_state][index]
 
 class Avatar:
-    def __init__(self, avatar_player, class_name):
+    def __init__(self, avatar_player, class_name, chars):
         self.size = 32
         self.position_x = 1 * self.size
         self.position_y = 1 * self.size
@@ -41,6 +41,8 @@ class Avatar:
         self.speed = 4
         self.image_direction = self.direction_x
         self.dir_length = 0.01
+        self.inventory = [None] * 4
+        self.chars = chars
 
     def handle_input(self, keys):
         direction_x = 0

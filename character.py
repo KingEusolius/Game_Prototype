@@ -84,10 +84,11 @@ class Character:
         self.clear_path_for_game = clear_path
         self.spawn_item = spawn_item
         self.calc_attack_path = calc_attack_path
+        self.create_projectile = create_projectile
 
         self.selected = False
         self.is_mob = is_mob
-        self.create_projectile = create_projectile
+
         self.ai_turn = False
         self.actions = []
         self.finished = False
@@ -114,6 +115,8 @@ class Character:
 
         if not self.ai_turn and not self.check_if_turn_is_over():
             self.finished = True
+
+
 
     def state_transition_handling(self, finished):
         if self.state == 'walk':
