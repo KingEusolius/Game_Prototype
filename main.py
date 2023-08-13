@@ -80,6 +80,9 @@ class Game:
         self.level_three_image = pygame.image.load("Third_Level.png").convert_alpha()
         self.level_three_image = pygame.transform.scale(self.level_three_image, (WIDTH, HEIGHT))
 
+        self.overworld_image = pygame.image.load("First_Overworld.png").convert_alpha()
+        self.overworld_image = pygame.transform.scale(self.overworld_image, (WIDTH, HEIGHT))
+
         self.overlay_image = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA, 32)
         self.overlay_image = self.overlay_image.convert_alpha()
         self.overlay_image.fill((0, 0, 0, 0))
@@ -98,17 +101,17 @@ class Game:
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
                       None)])
-        self.avatar_enemies = [Avatar_Enemies(avatar_enemies_player, 320, 320, 'imp_minor', [
+        self.avatar_enemies = [Avatar_Enemies(avatar_enemies_player, 115, 130, 'imp_minor', [
             Character(animation_player, self.fight.clear_path, pygame.math.Vector2(7, 3), 'skeleton_minor',
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, True, self.fight.create_projectile,
                       None)]),
-                               Avatar_Enemies(avatar_enemies_player, 480, 320, 'imp_minor', [
+                               Avatar_Enemies(avatar_enemies_player, 210, 440, 'imp_minor', [
                                    Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 3),
                                              'skeleton_minor', self.fight.spawn_item,
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
                                              self.fight.create_projectile, None)]),
-                               Avatar_Enemies(avatar_enemies_player, 320, 480, 'imp_major', [
+                               Avatar_Enemies(avatar_enemies_player, 430, 240, 'imp_major', [
                                    Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 6),
                                              'skeleton_minor', self.fight.spawn_item,
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
@@ -118,6 +121,7 @@ class Game:
                                              self.fight.spawn_particle, None)])]
 
         self.overworld = Overworld(self.avatar, self.avatar_enemies, self.set_fight)
+        self.overworld.set_img(self.overworld_image)
         self.fight.set_img(self.background_image)
         self.fight.set_avatar(self.avatar)
         self.fight.set_player_chars(self.avatar.chars)

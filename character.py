@@ -63,6 +63,7 @@ class Character:
         self.skills_available_this_turn = [True] * 4
         self.skills[0] = item
         self.skills[3] = item
+        self.items = []
 
         self.img = anim_player.get_image(self.class_name, self.state, self.animation_index)
         self.stats_img = pygame.Surface((64, 64 // 4))
@@ -101,6 +102,9 @@ class Character:
         self.attack_range = dictionary.char_dict[self.class_name]['attack_range']
         self.move_range = dictionary.char_dict[self.class_name]['move_range']
         self.max_move_range = self.move_range * 1
+
+    def set_items(self, items):
+        self.items = items
 
     def update(self):
         self.img = self.anim_player.get_image(self.class_name, self.state, int(self.animation_index))

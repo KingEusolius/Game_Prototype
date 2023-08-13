@@ -9,13 +9,13 @@ import grass
 import random
 import math
 
-
 TILESIZE = 64
 GRIDWIDTH = 16
 GRIDHEIGHT = 10
 DARKRED = (127, 0, 0)
 LIGHTBLUE = (71, 117, 191)
 DARKGRAY = (40, 40, 40)
+
 
 class Fight(GameClass):
     def __init__(self, set_overworld):
@@ -52,7 +52,6 @@ class Fight(GameClass):
                     v = random.random()
                     if v > 0.1:
                         self.gm.place_tile((x, y), int(v * 5), [0, 1, 2, 3, 4])
-
 
         # ai and pathfinding/navigation stuff. move to separate class
         self.g = SquareGrid(GRIDWIDTH, GRIDHEIGHT)
@@ -107,7 +106,7 @@ class Fight(GameClass):
         if victory and not self.celebration and 0:
             self.celebration = True
             for mob in self.mobs:
-                self.spawn_item((mob.position_x, mob.position_y))
+                self.spawn_item((mob.position_x, mob.position_y), mob.items)
 
         defeat = True
         for char in player_characters:
@@ -233,7 +232,7 @@ class Fight(GameClass):
                                 self.calculate_possible_attack_tiles(self.selected_char)
                         self.calc_if_enemy_in_range()
                 if event.type == pygame.KEYDOWN:
-                    #if event.key == pygame.K_p:
+                    # if event.key == pygame.K_p:
                     #    pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
                     #    self.particles.append(Particle(self.particle_player, 'inferno', pos, self.clear_particle))
                     if event.key == pygame.K_u:
@@ -253,7 +252,6 @@ class Fight(GameClass):
                         self.bool_increment_overlay = True
                         self.fade_out = True
                         self.fade_in = False
-
 
     def update(self):
         current_mouse_pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
@@ -298,8 +296,7 @@ class Fight(GameClass):
         if victory and not self.game_celebration:
             self.game_celebration = True
             for mob in self.mobs:
-                self.spawn_item((mob.position_x, mob.position_y))
-
+                self.spawn_item((mob.position_x, mob.position_y), mob.items)
 
     def draw(self, screen):
         self.draw_background(screen)
@@ -608,10 +605,12 @@ class Fight(GameClass):
             if mob_position == self.mouse_position:
                 self.selected_mob = mob
 
-    def spawn_item(self, position):
+    def spawn_item(self, position, items):
         pos = from_screenspace_to_gridspace(position)
-        self.items.append(Item(self.item_player, 'sword', pos, self.item_dictionary))
-        self.items.append(Item(self.item_player, 'crossbow', pos, self.item_dictionary))
+        for item in items:
+            self.items.append(Item(self.item_player, item, pos, self.item_dictionary))
+        #self.items.append(Item(self.item_player, 'sword', pos, self.item_dictionary))
+        #self.items.append(Item(self.item_player, 'crossbow', pos, self.item_dictionary))
 
     def item_pick_up(self):
         for it in self.items:
@@ -627,7 +626,6 @@ class Fight(GameClass):
             if not self.avatar.inventory[i]:
                 return i
         return len(self.avatar.inventory)
-
 
 
 def from_screenspace_to_gridspace(screen_coordinates):

@@ -115,6 +115,9 @@ class Avatar_Enemies_Player:
     def get_image(self, class_name, class_state, index):
         return self.classes[class_name][class_state][index]
 
+    def get_outline(self, class_name, class_state, index):
+        return self.classes_outlines[class_name][class_state][index].outline()
+
 
 class Avatar_Enemies:
     def __init__(self, avatar_enemies_player, pos_x, pos_y, class_name, mobs):
@@ -133,6 +136,8 @@ class Avatar_Enemies:
         self.rect.y = self.position_y
         self.defeated = False
         self.mobs = mobs
+        self.outline = avatar_enemies_player.get_outline(self.class_name, self.state, int(self.animation_index))
+        self.in_range = False
 
     def update(self):
         self.play_animation()
@@ -150,3 +155,10 @@ class Avatar_Enemies:
     def draw(self, screen):
         screen.blit(self.img, (self.position_x, self.position_y))
         #pygame.draw.rect(screen, (255, 0, 0), self.rect)
+
+    def draw_outline(self, screen):
+        self.outline = self.avatar_enemies_player.get_outline(self.class_name, self.state, int(self.animation_index))
+        for point in self.outline:
+            x = point[0] + self.position_x
+            y = point[1] + self.position_y
+            pygame.draw.line(screen, (255, 0, 0), (x, y), (x, y), 1)
