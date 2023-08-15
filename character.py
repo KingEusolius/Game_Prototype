@@ -6,10 +6,12 @@ pygame.font.init()
 my_font = pygame.font.SysFont('New Times Roman', 30)
 game_over_font = pygame.font.SysFont('Verdana', 60)
 
+
 def from_screenspace_to_gridspace(screen_coordinates):
     x_grid = screen_coordinates[0] // 64
     y_grid = screen_coordinates[1] // 64
     return x_grid, y_grid
+
 
 class Character_Dictionary:
     def __init__(self):
@@ -36,7 +38,8 @@ class Character_Dictionary:
 
 
 class Character:
-    def __init__(self, anim_player, clear_path, pos, class_name, spawn_item, dictionary, calc_attack_path, is_mob, create_projectile, item):
+    def __init__(self, anim_player, clear_path, pos, class_name, spawn_item, dictionary, calc_attack_path, is_mob,
+                 create_projectile, item):
         self.class_name = class_name
         self.state = 'idle'
         self.direction = 'down'
@@ -94,6 +97,11 @@ class Character:
         self.actions = []
         self.finished = False
 
+        self.turn_over = False
+        self.notify_fight = None
+        self.nr_max_actions = 1
+        self.nr_actions = 1
+
     def get_stats(self, dictionary):
         self.health = dictionary.char_dict[self.class_name]['health']
         self.attack_power = dictionary.char_dict[self.class_name]['attack_power']
@@ -106,6 +114,12 @@ class Character:
     def set_items(self, items):
         self.items = items
 
+    def set_nr_max_actions(self, nr_max_actions):
+        self.nr_max_actions = nr_max_actions
+
+    def set_notify_fight(self, ai_turn):
+        self.notify_fight = ai_turn
+
     def update(self):
         self.img = self.anim_player.get_image(self.class_name, self.state, int(self.animation_index))
         self.outline = self.anim_player.get_outline(self.class_name, self.state, int(self.animation_index))
@@ -115,12 +129,15 @@ class Character:
 
         self.state_transition_handling(finished)
         if self.ai_turn and not self.actions:
-            self.ai_turn = False
+            if self.nr_actions != self.nr_max_actions:
+                self.nr_actions += 1
+                self.notify_fight()
+            else:
+                self.ai_turn = False
+                self.turn_over = True
 
         if not self.ai_turn and not self.check_if_turn_is_over():
             self.finished = True
-
-
 
     def state_transition_handling(self, finished):
         if self.state == 'walk':

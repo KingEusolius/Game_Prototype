@@ -94,10 +94,13 @@ class Game:
         self.fight = Fight(self.set_overworld)
 
         self.avatar = Avatar(avatar_player, 'men', [
-            Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 3), 'peasant_minor',
+            Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 3), 'archer_major',
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
                       None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 5), 'peasant_minor',
+                      self.fight.spawn_item,
+                      char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
+                      None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 7), 'peasant_minor',
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
                       None)])
@@ -118,7 +121,10 @@ class Game:
                                              self.fight.create_projectile, None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 4),
                                              'lich_minor', self.fight.spawn_item,
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
-                                             self.fight.spawn_particle, None)])]
+                                             self.fight.spawn_particle, None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 8),
+                                             'skeleton_minor', self.fight.spawn_item,
+                                             char_dictionary, self.fight.calculate_possible_attack_tiles, True,
+                                             self.fight.create_projectile, None)])]
 
         self.overworld = Overworld(self.avatar, self.avatar_enemies, self.set_fight)
         self.overworld.set_img(self.overworld_image)

@@ -38,13 +38,16 @@ class Fight(GameClass):
 
         self.avatar = None
 
+        self.mob_idx = 0
+        self.max_mob_idx = 0
+
         # set up the grass manager and enable shadows
         self.gm = grass.GrassManager('graphics/grass', tile_size=15, stiffness=900, max_unique=5, place_range=[0, 1])
         self.gm.enable_ground_shadows(shadow_radius=4, shadow_color=(0, 0, 1), shadow_shift=(1, 2))
         self.t = 0
 
         # fill in the base square
-        if 1:
+        if 0:
             for y in range(7, 32, 1):
                 y += 5
                 for x in range(10, 50, 1):
@@ -83,6 +86,10 @@ class Fight(GameClass):
 
     def set_mobs(self, mobs):
         self.mobs = mobs
+        self.mob_idx = 0
+        self.max_mob_idx = len(self.mobs)
+        #self.mobs[1].set_nr_max_actions(2)
+        #self.mobs[1].set_notify_fight(self.ai_turn)
 
     def clear_mobs(self):
         self.mobs = []
@@ -240,6 +247,11 @@ class Fight(GameClass):
                         self.particles.append(Particle(self.particle_player, 'update', pos, self.clear_particle))
                     if event.key == pygame.K_a:
                         self.player_turn = False
+                        self.mob_idx = 0
+                        for mob in self.mobs:
+                            mob.turn_over = False
+                            mob.nr_actions = 1
+                        self.mob_idx = self.find_next_free_mob()
                         self.ai_turn()
                     if event.key == pygame.K_r:
                         self.re_init()
@@ -285,6 +297,8 @@ class Fight(GameClass):
                 self.projectiles.remove(pr)
 
         if not self.player_turn:
+            # first try if this is the right place to check
+            self.check_if_mob_is_finished()
             self.check_if_ai_is_finished()
 
         victory = True
@@ -525,34 +539,51 @@ class Fight(GameClass):
             mob.actions.append('attack')
 
     def ai_turn(self):
-        self.selected_mob = None
-        self.selected_char = None
         self.occupied_spots_by_ai.clear()
-        for mob in self.mobs:
-            mob_ready = not mob.actions
-            if mob.alive and mob_ready:
-                mob.ai_turn = True
-                self.reachable_tiles.clear()
-                self.g.walls = []
-                self.g.obstacles = []
-                for oc in self.occupied_spots_by_ai:
-                    self.g.obstacles.append(oc)
-                for mobster in self.mobs:
-                    if mobster != mob:
-                        x, y = from_screenspace_to_gridspace((mobster.position_x, mobster.position_y))
-                        self.g.obstacles.append((x, y))
+        mob = self.mobs[self.mob_idx]
+        mob_ready = not mob.actions
+        if mob.alive and mob_ready:
+            mob.ai_turn = True
+            self.reachable_tiles.clear()
+            self.g.walls = []
+            self.g.obstacles = []
+            for oc in self.occupied_spots_by_ai:
+                self.g.obstacles.append(oc)
+            for mobster in self.mobs:
+                if mobster != mob:
+                    x, y = from_screenspace_to_gridspace((mobster.position_x, mobster.position_y))
+                    self.g.obstacles.append((x, y))
 
-                self.calculate_path(mob, 18)
+            self.calculate_path(mob, 18)
 
-                nearest_char = mob.find_nearest_and_weakest_target(self.player_chars)
+            nearest_char = mob.find_nearest_and_weakest_target(self.player_chars)
 
-                if nearest_char:
-                    self.mob_decision(mob, nearest_char)
+            if nearest_char:
+                self.mob_decision(mob, nearest_char)
 
-        self.can_ai_turn = False
         self.clear_path()
-        for char in self.player_chars:
-            char.reset_for_new_turn()
+
+    def check_if_mob_is_finished(self):
+        mob = self.mobs[self.mob_idx]
+        # if mobs turn is over, we can take a look for the next mob in line
+        # if no next mob is found, the player can make its turn again
+        if mob.turn_over:
+            self.mob_idx = self.find_next_free_mob()
+            # next enemy can decide what to do
+            if self.mob_idx < self.max_mob_idx:
+                self.ai_turn()
+            else:
+                # player can now fight
+                self.can_ai_turn = False
+                self.clear_path()
+                for char in self.player_chars:
+                    char.reset_for_new_turn()
+
+    def find_next_free_mob(self):
+        for idx, mob in enumerate(self.mobs):
+            if not mob.turn_over and mob.alive:
+                return idx
+        return self.max_mob_idx
 
     def check_if_ai_is_finished(self):
         finished = True
