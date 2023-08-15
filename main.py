@@ -132,6 +132,7 @@ class Game:
         self.fight.fade_in = True
         self.fight.fade_out = False
         self.fight.bool_increment_overlay = True
+        self.avatar.check_characters()
         if self.fight.game_celebration:
             self.overworld.selected_enemy.set_defeated()
         self.game = self.overworld

@@ -44,7 +44,7 @@ class Fight(GameClass):
         self.t = 0
 
         # fill in the base square
-        if 0:
+        if 1:
             for y in range(7, 32, 1):
                 y += 5
                 for x in range(10, 50, 1):

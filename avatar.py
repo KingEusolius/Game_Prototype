@@ -44,6 +44,12 @@ class Avatar:
         self.inventory = [None] * 4
         self.chars = chars
 
+    def check_characters(self):
+        for idx, char in enumerate(self.chars):
+            if not char.alive:
+                # test if works as intended
+                self.chars.pop(idx)
+
     def handle_input(self, keys):
         direction_x = 0
         direction_y = 0
