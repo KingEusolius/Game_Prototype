@@ -140,10 +140,13 @@ class Character:
             self.finished = True
 
     def state_transition_handling(self, finished):
+        # state walk
         if self.state == 'walk':
             if len(self.waypoints) > 0:
+                # character can walk
                 self.move(pygame.math.Vector2(self.direction_x, self.direction_y))
             else:
+                # character has arrived at destination -> decision for next action
                 if self.is_mob:
                     self.actions.pop(0)
                 self.clear_path_for_game()
@@ -153,29 +156,34 @@ class Character:
                     self.is_selected(False)
 
                 if self.attack_after_walk:
+                    # state transition from walk to attack
                     self.change_state('attack')
                     self.attack_after_walk = False
                 else:
+                    # state transition from walk to idle
                     self.change_state('idle')
                     if self.can_attack and not self.is_mob:
                         self.calc_attack_path(self)
-
+        # state attack
         elif self.state == 'attack':
             if finished:
                 if self.is_mob:
                     self.actions.pop(0)
                 self.can_attack = False
                 self.change_state('idle')
-
+        # state take hit
         elif self.state == 'take_hit':
             if finished:
                 self.update_status()
+                # state transition from take hit to idle
                 self.change_state('idle')
                 if self.health <= 0:
+                    # state transition from take hit to death
                     self.change_state('death')
-
+        # state death
         elif self.state == 'death':
             if finished:
+                # state transition from death to dead
                 self.change_state('dead')
                 self.alive = False
 
@@ -214,6 +222,7 @@ class Character:
         self.health -= amount
 
     def change_state(self, state):
+        # on entry
         self.animation_index = 0
         self.state = state
         if self.state == 'attack':

@@ -70,6 +70,7 @@ class Overworld(GameClass):
 
         for building in self.buildings:
             building.update()
+            building.is_selected(pygame.mouse.get_pos())
 
     def draw(self, screen):
         self.draw_background(self.camera_img)
