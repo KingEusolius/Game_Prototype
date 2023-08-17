@@ -156,70 +156,8 @@ class Game:
 
         self.game = self.fight
 
-    def re_init(self):
-        self.level = 1
-        self.characters.clear()
-        self.mobs.clear()
-        self.particles.clear()
-        self.items.clear()
-        self.projectiles.clear()
-
-        self.characters.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(4, 3), 'cavalier_minor', self.spawn_item,
-                      char_dictionary, self.calculate_possible_attack_tiles, False, self.create_projectile, None))
-        self.characters.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(4, 5), 'archer_minor', self.spawn_item,
-                      char_dictionary, self.calculate_possible_attack_tiles, False, self.create_projectile, None))
-        self.selected_char = None
-
-        self.mobs.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(10, 3), 'skeleton_minor', self.spawn_item,
-                      char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
-        self.mobs.append(
-            Character(animation_player, self.clear_path, pygame.math.Vector2(10, 5), 'skeleton_minor', self.spawn_item,
-                      char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
-        self.selected_mob = None
-        self.can_ai_turn = False
-        self.game_celebration = False
-        self.fight = Fight(self.mobs, self.background_image)
-
     def input_handling(self):
         self.game.input_handling()
-
-    def level_update(self):
-        self.mobs.clear()
-        self.particles.clear()
-        self.projectiles.clear()
-        self.items.clear()
-        self.selected_char = None
-        self.selected_mob = None
-        self.can_ai_turn = False
-        self.game_celebration = False
-
-        for char in self.characters:
-            char.position_x = 4 * 64
-            char.reset_for_new_turn()
-            char.get_stats(char.dictionary)
-
-        if self.level == 2:
-            self.mobs.append(
-                Character(animation_player, self.clear_path, pygame.math.Vector2(7, 3), 'skeleton_major',
-                          self.spawn_item,
-                          char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
-            self.mobs.append(
-                Character(animation_player, self.clear_path, pygame.math.Vector2(7, 5), 'skeleton_major',
-                          self.spawn_item,
-                          char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
-
-        elif self.level == 3:
-            self.mobs.append(
-                Character(animation_player, self.clear_path, pygame.math.Vector2(9, 3), 'lich_minor',
-                          self.spawn_item,
-                          char_dictionary, self.calculate_possible_attack_tiles, True, self.spawn_particle, None))
-            self.mobs.append(
-                Character(animation_player, self.clear_path, pygame.math.Vector2(7, 5), 'imp_minor',
-                          self.spawn_item,
-                          char_dictionary, self.calculate_possible_attack_tiles, True, self.create_projectile, None))
 
     def update(self):
         self.game.update()
