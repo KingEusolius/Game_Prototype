@@ -30,7 +30,7 @@ class Arrow:
     def check_overlap(self):
         if self.target.position_x + 16 <= self.position_x < self.target.position_x + 48 and self.target.position_y + 16 <= self.position_y < self.target.position_y + 48:
             self.hit = True
-            self.target.change_state('take_hit')
+            self.target.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
             self.target.take_damage(self.attack_power)
 
     def draw(self, screen):

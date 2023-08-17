@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 from pathfinding import heuristic, vec, vec2int
+from states import *
 
 pygame.font.init()
 my_font = pygame.font.SysFont('New Times Roman', 30)
@@ -101,6 +102,8 @@ class Character:
         self.notify_fight = None
         self.nr_max_actions = 1
         self.nr_actions = 1
+        # init state machine
+        self.state_machine = State_machine(self)
 
     def get_stats(self, dictionary):
         self.health = dictionary.char_dict[self.class_name]['health']
@@ -121,13 +124,11 @@ class Character:
         self.notify_fight = ai_turn
 
     def update(self):
-        self.img = self.anim_player.get_image(self.class_name, self.state, int(self.animation_index))
-        self.outline = self.anim_player.get_outline(self.class_name, self.state, int(self.animation_index))
-        if self.direction_x < 0:
-            self.img = pygame.transform.flip(self.img, True, False)
+        # check if animation should be over and update
         finished = self.play_animation()
-
-        self.state_transition_handling(finished)
+        transition = self.state_machine.current_state.update(finished)
+        self.state_machine.trigger_transition(transition)
+        # TO DO: refactor code
         if self.ai_turn and not self.actions:
             if self.nr_actions != self.nr_max_actions:
                 self.nr_actions += 1
@@ -138,57 +139,6 @@ class Character:
 
         if not self.ai_turn and not self.check_if_turn_is_over():
             self.finished = True
-
-    def state_transition_handling(self, finished):
-        # state walk
-        if self.state == 'walk':
-            if len(self.waypoints) > 0:
-                # character can walk
-                self.move(pygame.math.Vector2(self.direction_x, self.direction_y))
-            else:
-                # character has arrived at destination -> decision for next action
-                if self.is_mob:
-                    self.actions.pop(0)
-                self.clear_path_for_game()
-                if self.move_range <= 0:
-                    self.can_walk = False
-                if self.deselect_after_action:
-                    self.is_selected(False)
-
-                if self.attack_after_walk:
-                    # state transition from walk to attack
-                    self.change_state('attack')
-                    self.attack_after_walk = False
-                else:
-                    # state transition from walk to idle
-                    self.change_state('idle')
-                    if self.can_attack and not self.is_mob:
-                        self.calc_attack_path(self)
-        # state attack
-        elif self.state == 'attack':
-            if finished:
-                if self.is_mob:
-                    self.actions.pop(0)
-                self.can_attack = False
-                self.change_state('idle')
-        # state take hit
-        elif self.state == 'take_hit':
-            if finished:
-                self.update_status()
-                # state transition from take hit to idle
-                self.change_state('idle')
-                if self.health <= 0:
-                    # state transition from take hit to death
-                    self.change_state('death')
-        # state death
-        elif self.state == 'death':
-            if finished:
-                # state transition from death to dead
-                self.change_state('dead')
-                self.alive = False
-
-        elif self.state == 'dead':
-            self.animation_index = 0
 
     def play_animation(self):
         self.animation_index += 0.1
@@ -220,22 +170,6 @@ class Character:
 
     def take_damage(self, amount):
         self.health -= amount
-
-    def change_state(self, state):
-        # on entry
-        self.animation_index = 0
-        self.state = state
-        if self.state == 'attack':
-            self.get_direction(self.target.position_x, self.target.position_y)
-            if self.long_range == 0:
-                self.target.change_state('take_hit')
-                self.target.take_damage(self.attack_power)
-                self.target = None
-            else:
-                if "lich" in self.class_name:
-                    self.create_projectile("death_ripple", (self.target.position_x, self.target.position_y))
-                else:
-                    self.create_projectile(self.position_x, self.position_y, self.target, self.attack_power)
 
     def get_direction(self, target_x, target_y):
         if target_x == self.position_x:
@@ -304,24 +238,27 @@ class Character:
         self.stats_img.blit(text_surface, (text_pos, 0))
 
     def draw(self, screen):
+        self.img = self.anim_player.get_image(self.class_name, self.state, int(self.animation_index))
+
+        if self.direction_x < 0:
+            self.img = pygame.transform.flip(self.img, True, False)
         screen.blit(self.img, (self.position_x, self.position_y))
 
         if self.selected:
-            for point in self.outline:
-                if self.direction_x < 0:
-                    x = -point[0] + 64 + self.position_x
-                else:
-                    x = point[0] + self.position_x
-                y = point[1] + self.position_y
-                pygame.draw.line(screen, (255, 0, 0), (x, y), (x, y), 4)
+            self.outline = self.anim_player.get_outline(self.class_name, self.state, int(self.animation_index))
+            self.calc_outline(screen, (255, 0, 0))
 
         if self.in_range:
-            for point in self.outline:
-                if self.direction_x < 0:
-                    x = -point[0] + 64 + self.position_x
-                else:
-                    x = point[0] + self.position_x
-                y = point[1] + self.position_y
-                pygame.draw.line(screen, (255, 215, 0), (x, y), (x, y), 4)
+            self.outline = self.anim_player.get_outline(self.class_name, self.state, int(self.animation_index))
+            self.calc_outline(screen, (255, 215, 0))
 
         screen.blit(self.stats_img, (self.position_x, self.position_y - 16))
+
+    def calc_outline(self, screen, color):
+        for point in self.outline:
+            if self.direction_x < 0:
+                x = -point[0] + 64 + self.position_x
+            else:
+                x = point[0] + self.position_x
+            y = point[1] + self.position_y
+            pygame.draw.line(screen, color, (x, y), (x, y), 4)

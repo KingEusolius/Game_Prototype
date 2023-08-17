@@ -34,54 +34,49 @@ class Particle:
         if particle_type == 'inferno':
             for enemy in enemy_list:
                 if self.position_x == enemy.position_x and self.position_y == enemy.position_y:
-                    enemy.change_state('take_hit')
+                    enemy.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
                     enemy.take_damage(2)
 
         elif particle_type == 'update':
             for player in player_list:
                 if self.position_x == player.position_x and self.position_y == player.position_y:
-                    player.change_state('take_hit')
+                    player.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
                     player.class_name = player.class_name.replace("minor", "major")
                     player.get_stats(player.dictionary)
-                    print(player.class_name)
 
         elif particle_type == 'acid_splash' or particle_type == 'death_ripple':
             for player in player_list:
                 if self.position_x == player.position_x and self.position_y == player.position_y:
-                    player.change_state('take_hit')
+                    player.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
                     player.take_damage(2)
 
         elif particle_type == 'sword_update':
             for player in player_list:
                 if self.position_x == player.position_x and self.position_y == player.position_y:
-                    player.change_state('take_hit')
+                    player.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
                     player.class_name = player.class_name.replace("peasant", "swordsman")
                     player.get_stats(player.dictionary)
-                    print(player.class_name)
 
         elif particle_type == 'spear_update':
             for player in player_list:
                 if self.position_x == player.position_x and self.position_y == player.position_y:
-                    player.change_state('take_hit')
+                    player.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
                     player.class_name = player.class_name.replace("peasant", "pikeman")
                     player.get_stats(player.dictionary)
-                    print(player.class_name)
 
         elif particle_type == 'crossbow_update':
             for player in player_list:
                 if self.position_x == player.position_x and self.position_y == player.position_y:
-                    player.change_state('take_hit')
+                    player.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
                     player.class_name = player.class_name.replace("peasant", "archer")
                     player.get_stats(player.dictionary)
-                    print(player.class_name)
 
         elif particle_type == 'horse_update':
             for player in player_list:
                 if self.position_x == player.position_x and self.position_y == player.position_y:
-                    player.change_state('take_hit')
+                    player.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
                     player.class_name = "cavalier_minor"
                     player.get_stats(player.dictionary)
-                    print(player.class_name)
 
     def play_animation(self):
         self.animation_index += 0.2

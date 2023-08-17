@@ -146,7 +146,7 @@ class Fight(GameClass):
                         # click on terrain
                         if state == 0:
                             if self.selected_char.can_walk:
-                                self.selected_char.change_state('walk')
+                                self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
                                 self.selected_char.waypoints = self.get_shortest_path()
                                 if self.selected_char.waypoints:
                                     self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
@@ -167,7 +167,7 @@ class Fight(GameClass):
                             self.mob_selection()
                             # short range units
                             if self.selected_char.long_range == 0:
-                                self.selected_char.change_state('walk')
+                                self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
                                 self.selected_char.waypoints = self.get_shortest_path()
                                 if self.selected_char.waypoints:
                                     self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
@@ -199,7 +199,7 @@ class Fight(GameClass):
                                                  vec(mob_x, mob_y)) <= self.selected_char.attack_range:
                                         self.selected_char.target = self.selected_mob
                                         self.selected_mob.in_range = False
-                                        self.selected_char.change_state('attack')
+                                        self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
                                         self.selected_char.deselect_after_action = True
                                         self.selected_char.is_selected(False)
                                         self.clear_path()
@@ -213,8 +213,7 @@ class Fight(GameClass):
                                 mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
                                 if heuristic(vec(char_x, char_y), vec(mob_x, mob_y)) <= self.selected_char.attack_range:
                                     self.selected_char.target = self.selected_mob
-                                    self.selected_char.change_state('attack')
-
+                                    self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
                                     self.selected_char.deselect_after_action = True
                                     self.selected_char.is_selected(False)
                                     self.clear_path()
@@ -257,7 +256,8 @@ class Fight(GameClass):
                         self.re_init()
                     if event.key == pygame.K_b:
                         pos = (self.player_chars[2].position_x + 32, self.player_chars[2].position_y + 32)
-                        self.player_chars[2].change_state('attack')
+                        #self.player_chars[2].change_state('attack')
+                        self.player_chars[2].state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
                         self.projectiles.append(Arrow(pos, self.mobs[1], self.player_chars[2].attack_power))
                     if event.key == pygame.K_n:
                         self.level += 1
@@ -521,7 +521,7 @@ class Fight(GameClass):
         mob.waypoints = self.get_shortest_path() * 1
         # mob has to walk
         if mob.waypoints:
-            mob.change_state('walk')
+            mob.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
             mob.actions.append('walk')
             mob.set_target_position(mob.waypoints[0][0],
                                     mob.waypoints[0][1])
@@ -535,7 +535,7 @@ class Fight(GameClass):
         else:
             # mob can attack directly
             mob.target = nearest_char
-            mob.change_state('attack')
+            mob.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
             mob.actions.append('attack')
 
     def ai_turn(self):
@@ -640,8 +640,6 @@ class Fight(GameClass):
         pos = from_screenspace_to_gridspace(position)
         for item in items:
             self.items.append(Item(self.item_player, item, pos, self.item_dictionary))
-        #self.items.append(Item(self.item_player, 'sword', pos, self.item_dictionary))
-        #self.items.append(Item(self.item_player, 'crossbow', pos, self.item_dictionary))
 
     def item_pick_up(self):
         for it in self.items:
