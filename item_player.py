@@ -117,7 +117,7 @@ class Item:
             self.position_x += self.x_vel
             self.position_y += self.y_vel
 
-        self.check_overlap(pygame.mouse.get_pos())
+        #self.check_overlap(pygame.mouse.get_pos())
 
     def check_overlap(self, position):
         self.selected = (self.position_x <= position[0] < self.position_x + 48 and self.position_y <= position[

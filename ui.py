@@ -36,6 +36,7 @@ class UI:
                 self.char.can_attack = False
                 index = rect.index
                 self.char.skills_available_this_turn[index] = False
+                self.char.skills[index] = None
                 return True
         return False
 
@@ -51,11 +52,13 @@ class UI:
                 if item:
                     screen.blit(item.inventory_img, (self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64))
                     if char.skills_available_this_turn[idx]:
-                        self.resource_slots[idx].occupy_spot(char.skills[idx].particle_type)
+                        self.resource_slots[idx].occupy_spot(char.skills[idx].particle_type, char.skills[idx].inventory_img)
                     else:
                         screen.blit(self.gray_img, (self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64), special_flags=pygame.BLEND_RGBA_SUB)
                 else:
                     self.resource_slots[idx].free_spot()
+        else:
+            self.resource_slots[idx].free_spot()
         for idx, rect in enumerate(self.resource_slots):
             rect.draw(screen, self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64)
 

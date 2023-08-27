@@ -19,7 +19,7 @@ class Overworld(GameClass):
         self.buildings.append(Building(self.buildings_player, 11 * 64, 5 * 64, "stables"))
         self.background_image = None
         # debug code
-        self.enemies[0].mobs[0].set_items(['sword', 'crossbow'])
+        self.enemies[0].mobs[0].set_items(['sword', 'crossbow', 'spell'])
         self.enemies[1].mobs[0].set_items(['book'])
         self.enemies[2].mobs[1].set_items(['horse'])
         # test for camera
@@ -35,9 +35,14 @@ class Overworld(GameClass):
         pygame.draw.circle(self.circle_img, (255, 255, 255), (16, 16), 16)
         self.circle_img = pygame.transform.scale(self.circle_img, (256, 256))
 
+        self.collision_rectangles = []
+
 
     def set_img(self, img):
         self.background_image = img
+
+    def set_collision_rects(self, rects):
+        self.collision_rectangles = rects
 
     def input_handling(self):
         for event in pygame.event.get():
@@ -51,9 +56,14 @@ class Overworld(GameClass):
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         self.trigger_transition()
+                    #if event.key == pygame.K_e:
+
 
                 keys = pygame.key.get_pressed()
                 self.avatar.handle_input(keys)
+
+                #keys = pygame.mouse.get_pressed(num_buttons=3)
+                #self.avatar.handle_input_mouse(keys[0], pygame.mouse.get_pos())
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     # pack into own function
@@ -63,7 +73,7 @@ class Overworld(GameClass):
                             self.selected_enemy = enemy
 
     def update(self):
-        self.avatar.update()
+        self.avatar.update(self.collision_rectangles)
         for enemy in self.enemies:
             enemy.update()
             enemy.in_range = self.check_distance(enemy)
@@ -83,6 +93,9 @@ class Overworld(GameClass):
 
         for building in self.buildings:
             building.draw(self.camera_img)
+
+        #for rect in self.collision_rectangles:
+        #    rect.draw(self.camera_img)
 
         self.transition_drawing(self.camera_img)
 

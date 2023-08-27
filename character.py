@@ -2,6 +2,7 @@ import pygame
 import numpy as np
 from pathfinding import heuristic, vec, vec2int
 from states import *
+from target_finder import *
 
 pygame.font.init()
 my_font = pygame.font.SysFont('New Times Roman', 30)
@@ -104,6 +105,8 @@ class Character:
         self.nr_actions = 1
         # init state machine
         self.state_machine = State_machine(self)
+        # init target finder
+        self.target_finder = NearestTarget()
 
     def get_stats(self, dictionary):
         self.health = dictionary.char_dict[self.class_name]['health']
@@ -190,45 +193,6 @@ class Character:
 
     def is_selected(self, value):
         self.selected = value
-
-    def find_nearest_target(self, characters):
-        nearest_char = None
-        nearest_char_distance = np.inf
-        x_self, y_self = from_screenspace_to_gridspace((self.position_x, self.position_y))
-        for char in characters:
-            if char.health > 0:
-                x_char, y_char = from_screenspace_to_gridspace((char.position_x, char.position_y))
-                decision_value = heuristic(vec(x_self, y_self), vec(x_char, y_char))
-                if decision_value < nearest_char_distance:
-                    nearest_char = char
-                    nearest_char_distance = decision_value
-        return nearest_char
-
-    def find_nearest_and_strongest_target(self, characters):
-        nearest_char = None
-        nearest_char_distance = np.inf
-        x_self, y_self = from_screenspace_to_gridspace((self.position_x, self.position_y))
-        for char in characters:
-            if char.health > 0:
-                x_char, y_char = from_screenspace_to_gridspace((char.position_x, char.position_y))
-                decision_value = heuristic(vec(x_self, y_self), vec(x_char, y_char)) - char.health
-                if decision_value < nearest_char_distance:
-                    nearest_char = char
-                    nearest_char_distance = decision_value
-        return nearest_char
-
-    def find_nearest_and_weakest_target(self, characters):
-        nearest_char = None
-        nearest_char_distance = np.inf
-        x_self, y_self = from_screenspace_to_gridspace((self.position_x, self.position_y))
-        for char in characters:
-            if char.health > 0:
-                x_char, y_char = from_screenspace_to_gridspace((char.position_x, char.position_y))
-                decision_value = heuristic(vec(x_self, y_self), vec(x_char, y_char)) + char.health
-                if decision_value < nearest_char_distance:
-                    nearest_char = char
-                    nearest_char_distance = decision_value
-        return nearest_char
 
     def update_status(self):
         self.stats_img.fill(self.color)

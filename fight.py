@@ -88,8 +88,8 @@ class Fight(GameClass):
         self.mobs = mobs
         self.mob_idx = 0
         self.max_mob_idx = len(self.mobs)
-        #self.mobs[1].set_nr_max_actions(2)
-        #self.mobs[1].set_notify_fight(self.ai_turn)
+        # self.mobs[1].set_nr_max_actions(2)
+        # self.mobs[1].set_notify_fight(self.ai_turn)
 
     def clear_mobs(self):
         self.mobs = []
@@ -122,6 +122,85 @@ class Fight(GameClass):
 
         return victory or defeat
 
+    def input_click_on_terrain(self):
+        if self.selected_char.can_walk:
+            self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
+            self.selected_char.waypoints = self.get_shortest_path()
+            if self.selected_char.waypoints:
+                self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
+                                                       self.selected_char.waypoints[0][1])
+                self.selected_char.move_range -= len(self.selected_char.waypoints)
+
+    def input_click_on_character(self):
+        self.clear_path()
+        self.character_selection()
+        for spot in self.ui.resource_slots:
+            spot.free_spot()
+        if self.selected_char:
+            if self.selected_char.can_walk:
+                self.calculate_possible_paths_character()
+            elif self.selected_char.can_attack:
+                self.calculate_possible_attack_tiles(self.selected_char)
+        self.calc_if_enemy_in_range()
+
+    def unit_transition_to_attack(self):
+        char_x, char_y = self.selected_char.position_x, \
+                         self.selected_char.position_y
+        mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
+        char_x, char_y = from_screenspace_to_gridspace((char_x, char_y))
+        mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
+        if heuristic(vec(char_x, char_y), vec(mob_x, mob_y)) <= self.selected_char.attack_range:
+            self.selected_char.target = self.selected_mob
+            self.selected_mob.in_range = False
+            self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
+            self.selected_char.deselect_after_action = True
+            self.selected_char.is_selected(False)
+            self.clear_path()
+            self.selected_char = None
+
+    def input_click_on_enemy(self):
+        self.mob_selection()
+        # short range units
+        if self.selected_char.long_range == 0:
+            self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
+            self.selected_char.waypoints = self.get_shortest_path()
+            if self.selected_char.waypoints:
+                self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
+                                                       self.selected_char.waypoints[0][1])
+                self.selected_char.move_range -= len(self.selected_char.waypoints)
+            length_waypoints = len(self.selected_char.waypoints)
+            # unit must walk up to enemy
+            if length_waypoints:
+                last_x, last_y = self.selected_char.waypoints[length_waypoints - 1][0], \
+                                 self.selected_char.waypoints[length_waypoints - 1][1]
+                mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
+                last_x, last_y = from_screenspace_to_gridspace((last_x, last_y))
+                mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
+                if heuristic(vec(last_x, last_y),
+                             vec(mob_x, mob_y)) <= self.selected_char.attack_range:
+                    self.selected_char.attack_after_walk = True
+                    self.selected_char.target = self.selected_mob
+                    self.selected_mob.in_range = False
+                    self.selected_char.deselect_after_action = True
+                    self.selected_char.is_selected(False)
+                    self.selected_char = None
+            else:
+                self.unit_transition_to_attack()
+        # long range unit
+        else:
+            self.unit_transition_to_attack()
+
+    def input_clear_selection(self):
+        self.clear_path()
+        self.selected_char = None
+        self.selected_mob = None
+        for spot in self.ui.resource_slots:
+            spot.free_spot()
+        for char in self.player_chars:
+            char.is_selected(False)
+        for mob in self.mobs:
+            mob.in_range = False
+
     def input_handling(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -130,120 +209,61 @@ class Fight(GameClass):
                 sys.exit()
 
             if self.input_handling_allowed:
+                mouse_buttons = pygame.mouse.get_pressed(num_buttons=3)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         self.trigger_transition()
+                if mouse_buttons[0] and self.game_celebration:
+                    self.item_selection()
+                if event.type == pygame.MOUSEBUTTONUP and self.game_celebration:
+
+                    for it in self.items:
+                        if it.selected:
+                            it.selected = False
+                            # check to assign to which character
+                            mouse_position = from_screenspace_to_gridspace([it.position_x, it.position_y])
+                            for char in self.avatar.chars:
+                                # get char position
+                                char_position = from_screenspace_to_gridspace((char.position_x, char.position_y))
+                                # if positions coincide
+                                if mouse_position[0] == char_position[0] and mouse_position[1] == char_position[1]:
+                                    # find free skill spot of char
+                                    idx = self.skills_find_free_spot(char)
+                                    # if idx is smaller than number of skill slots, we have found an empty spot
+                                    if idx < len(char.skills):
+                                        char.skills[idx] = it
+                                        self.items.remove(it)
 
                 if event.type == pygame.MOUSEBUTTONDOWN and self.player_turn:
-
                     if self.game_celebration:
-                        self.item_pick_up()
+                        for it in self.items:
+                            it.check_overlap(pygame.mouse.get_pos())
+                        if mouse_buttons[2]:
+                            self.item_pick_up()
 
                     if self.ui.on_mouse_click(pygame.mouse.get_pos()):
                         pass
+                    # this path is chosen if a character has already been selected
                     elif self.selected_char and event.button == 1:
                         state = self.mouse_selection()
                         # click on terrain
                         if state == 0:
-                            if self.selected_char.can_walk:
-                                self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
-                                self.selected_char.waypoints = self.get_shortest_path()
-                                if self.selected_char.waypoints:
-                                    self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
-                                                                           self.selected_char.waypoints[0][1])
-                                    self.selected_char.move_range -= len(self.selected_char.waypoints)
+                            self.input_click_on_terrain()
                         # click on other character
                         elif state == 1:
-                            self.clear_path()
-                            self.character_selection()
-                            if self.selected_char:
-                                if self.selected_char.can_walk:
-                                    self.calculate_possible_paths_character()
-                                elif self.selected_char.can_attack:
-                                    self.calculate_possible_attack_tiles(self.selected_char)
-                            self.calc_if_enemy_in_range()
+                            self.input_click_on_character()
                         # click on enemy
                         elif state == 2 and self.selected_char.can_attack:
-                            self.mob_selection()
-                            # short range units
-                            if self.selected_char.long_range == 0:
-                                self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
-                                self.selected_char.waypoints = self.get_shortest_path()
-                                if self.selected_char.waypoints:
-                                    self.selected_char.set_target_position(self.selected_char.waypoints[0][0],
-                                                                           self.selected_char.waypoints[0][1])
-                                    self.selected_char.move_range -= len(self.selected_char.waypoints)
-                                length_waypoints = len(self.selected_char.waypoints)
-                                # unit must walk up to enemy
-                                if length_waypoints:
-                                    last_x, last_y = self.selected_char.waypoints[length_waypoints - 1][0], \
-                                                     self.selected_char.waypoints[length_waypoints - 1][1]
-                                    mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
-                                    last_x, last_y = from_screenspace_to_gridspace((last_x, last_y))
-                                    mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
-                                    if heuristic(vec(last_x, last_y),
-                                                 vec(mob_x, mob_y)) <= self.selected_char.attack_range:
-                                        self.selected_char.attack_after_walk = True
-                                        self.selected_char.target = self.selected_mob
-                                        self.selected_mob.in_range = False
-                                        self.selected_char.deselect_after_action = True
-                                        self.selected_char.is_selected(False)
-                                        self.selected_char = None
-                                else:
-                                    char_x, char_y = self.selected_char.position_x, \
-                                                     self.selected_char.position_y
-                                    mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
-                                    char_x, char_y = from_screenspace_to_gridspace((char_x, char_y))
-                                    mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
-                                    if heuristic(vec(char_x, char_y),
-                                                 vec(mob_x, mob_y)) <= self.selected_char.attack_range:
-                                        self.selected_char.target = self.selected_mob
-                                        self.selected_mob.in_range = False
-                                        self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
-                                        self.selected_char.deselect_after_action = True
-                                        self.selected_char.is_selected(False)
-                                        self.clear_path()
-                                        self.selected_char = None
-                            # long range unit
-                            else:
-                                char_x, char_y = self.selected_char.position_x, \
-                                                 self.selected_char.position_y
-                                mob_x, mob_y = self.selected_mob.position_x, self.selected_mob.position_y
-                                char_x, char_y = from_screenspace_to_gridspace((char_x, char_y))
-                                mob_x, mob_y = from_screenspace_to_gridspace((mob_x, mob_y))
-                                if heuristic(vec(char_x, char_y), vec(mob_x, mob_y)) <= self.selected_char.attack_range:
-                                    self.selected_char.target = self.selected_mob
-                                    self.selected_char.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
-                                    self.selected_char.deselect_after_action = True
-                                    self.selected_char.is_selected(False)
-                                    self.clear_path()
-                                    self.selected_mob.in_range = False
-                                    self.selected_char = None
-
+                            self.input_click_on_enemy()
+                    # right click means everything is reset
                     elif event.button == 3:
-                        self.clear_path()
-                        self.selected_char = None
-                        self.selected_mob = None
-                        for char in self.player_chars:
-                            char.is_selected(False)
-                        for mob in self.mobs:
-                            mob.in_range = False
+                        self.input_clear_selection()
+                    # character has been chosen for the first time
                     else:
-                        self.clear_path()
-                        self.character_selection()
-                        if self.selected_char:
-                            if self.selected_char.can_walk:
-                                self.calculate_possible_paths_character()
-                            elif self.selected_char.can_attack:
-                                self.calculate_possible_attack_tiles(self.selected_char)
-                        self.calc_if_enemy_in_range()
+                        self.input_click_on_character()
+                # keyboard input
                 if event.type == pygame.KEYDOWN:
-                    # if event.key == pygame.K_p:
-                    #    pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
-                    #    self.particles.append(Particle(self.particle_player, 'inferno', pos, self.clear_particle))
-                    if event.key == pygame.K_u:
-                        pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
-                        self.particles.append(Particle(self.particle_player, 'update', pos, self.clear_particle))
+                    # ai turn in fight
                     if event.key == pygame.K_a:
                         self.player_turn = False
                         self.mob_idx = 0
@@ -252,18 +272,8 @@ class Fight(GameClass):
                             mob.nr_actions = 1
                         self.mob_idx = self.find_next_free_mob()
                         self.ai_turn()
-                    if event.key == pygame.K_r:
-                        self.re_init()
-                    if event.key == pygame.K_b:
-                        pos = (self.player_chars[2].position_x + 32, self.player_chars[2].position_y + 32)
-                        #self.player_chars[2].change_state('attack')
-                        self.player_chars[2].state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
-                        self.projectiles.append(Arrow(pos, self.mobs[1], self.player_chars[2].attack_power))
-                    if event.key == pygame.K_n:
-                        self.level += 1
-                        self.bool_increment_overlay = True
-                        self.fade_out = True
-                        self.fade_in = False
+
+
 
     def update(self):
         current_mouse_pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
@@ -362,34 +372,6 @@ class Fight(GameClass):
         self.particles.append(
             Particle(self.particle_player, particle_type, pos, self.clear_particle, self.mobs, self.player_chars))
 
-    def calculate_shortest_path_character(self):
-        if not self.path:
-            return
-        if not self.selected_char:
-            self.clear_path()
-            return
-
-        character = self.selected_char
-        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
-        x_end, y_end = from_screenspace_to_gridspace(pygame.mouse.get_pos())
-
-        shortest_path = breadth_first_search_with_end(self.g, vec(x_end, y_end), vec(x_fig, y_fig),
-                                                      self.path)
-        goal = vec(x_end, y_end)
-        # draw path from start to goal
-        start = vec(x_fig, y_fig)
-        if shortest_path:
-            self.shortest_path_tiles.clear()
-            current = start + shortest_path[vec2int(start)]
-            while current != goal and heuristic(start, current) <= character.move_range and len(
-                    self.shortest_path_tiles) < character.move_range - 1:
-                x = current.x * TILESIZE
-                y = current.y * TILESIZE
-                self.shortest_path_tiles.append((x, y))
-                # find next in path
-                current = current + shortest_path[vec2int(current)]
-            self.shortest_path_tiles.append((current.x * TILESIZE, current.y * TILESIZE))
-
     def calc_if_enemy_in_range(self):
         if self.selected_char:
             length = len(self.shortest_path_tiles)
@@ -422,59 +404,6 @@ class Fight(GameClass):
         self.shortest_path_tiles.clear()
         self.calculate_new_path = True
 
-    def calculate_possible_paths_character(self):
-        if not self.selected_char:
-            self.clear_path()
-            return
-
-        if not self.selected_char.can_walk:
-            self.clear_path()
-            return
-
-        self.reachable_tiles.clear()
-        self.g.walls.clear()
-        self.g.obstacles.clear()
-
-        character = self.selected_char
-        for char in self.player_chars:
-            if char != character:
-                x, y = from_screenspace_to_gridspace((char.position_x, char.position_y))
-                self.g.obstacles.append((x, y))
-        for mob in self.mobs:
-            x, y = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
-            self.g.obstacles.append((x, y))
-
-        self.calculate_path(character)
-
-    def calculate_path(self, character, move_range=None):
-        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
-        if not move_range:
-            movement_range = character.move_range
-        else:
-            movement_range = move_range
-        self.path = breadth_first_search(self.g, vec(x_fig, y_fig), movement_range)
-        self.reachable_tiles.append((x_fig * TILESIZE, y_fig * TILESIZE))
-        for node, dir in self.path.items():
-            if dir:
-                x, y = node
-                x = x * TILESIZE
-                y = y * TILESIZE
-                self.reachable_tiles.append((x, y))
-
-    def calculate_possible_attack_tiles(self, character):
-        self.clear_path()
-        self.g.walls.clear()
-        self.g.obstacles.clear()
-        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
-        self.attack_path = breadth_first_search(self.g, vec(x_fig, y_fig), character.attack_range)
-        self.attack_tiles.append((x_fig * TILESIZE, y_fig * TILESIZE))
-        for node, dir in self.attack_path.items():
-            if dir:
-                x, y = node
-                x = x * TILESIZE
-                y = y * TILESIZE
-                self.attack_tiles.append((x, y))
-
     def draw_reachable_tiles(self, screen):
         for tile in self.reachable_tiles:
             rect = pygame.Rect(tile[0], tile[1], TILESIZE, TILESIZE)
@@ -495,49 +424,6 @@ class Fight(GameClass):
             pygame.draw.line(screen, DARKRED, rect.topright, rect.bottomright, 2)
             pygame.draw.line(screen, DARKRED, rect.bottomleft, rect.bottomright, 2)
 
-    def mob_decision(self, mob, nearest_char):
-        x_fig, y_fig = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
-        x_end, y_end = from_screenspace_to_gridspace((nearest_char.position_x, nearest_char.position_y))
-        shortest_path = breadth_first_search_with_end(self.g, vec(x_end, y_end), vec(x_fig, y_fig),
-                                                      self.path)
-        goal = vec(x_end, y_end)
-        start = vec(x_fig, y_fig)
-
-        self.shortest_path_tiles.clear()
-        current = start + shortest_path[vec2int(start)]
-        x = None
-        y = None
-        while current != goal and heuristic(start, current) <= mob.move_range and heuristic(current,
-                                                                                            goal) >= mob.attack_range:
-            x = current.x * TILESIZE
-            y = current.y * TILESIZE
-            self.shortest_path_tiles.append((x, y))
-            # find next in path
-            current = current + shortest_path[vec2int(current)]
-        if x is not None and y is not None:
-            last_x, last_y = x / TILESIZE, y / TILESIZE
-            self.occupied_spots_by_ai.append((last_x, last_y))
-
-        mob.waypoints = self.get_shortest_path() * 1
-        # mob has to walk
-        if mob.waypoints:
-            mob.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
-            mob.actions.append('walk')
-            mob.set_target_position(mob.waypoints[0][0],
-                                    mob.waypoints[0][1])
-            # mob can attack directly after walking
-            if heuristic(vec(last_x, last_y), goal) <= mob.attack_range:
-                mob.attack_after_walk = True
-                mob.target = nearest_char
-                mob.actions.append('attack')
-            else:
-                mob.attack_after_walk = False
-        else:
-            # mob can attack directly
-            mob.target = nearest_char
-            mob.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
-            mob.actions.append('attack')
-
     def ai_turn(self):
         self.occupied_spots_by_ai.clear()
         mob = self.mobs[self.mob_idx]
@@ -556,7 +442,7 @@ class Fight(GameClass):
 
             self.calculate_path(mob, 18)
 
-            nearest_char = mob.find_nearest_and_weakest_target(self.player_chars)
+            nearest_char = mob.target_finder.execute([mob.position_x, mob.position_y], self.player_chars)
 
             if nearest_char:
                 self.mob_decision(mob, nearest_char)
@@ -650,11 +536,147 @@ class Fight(GameClass):
                     self.ui.set_spot_occupied(i, it.particle_type, it.inventory_img)
                     self.items.remove(it)
 
+    def item_selection(self):
+        for it in self.items:
+            if it.selected:
+                it.position_x = pygame.mouse.get_pos()[0]
+                it.position_y = pygame.mouse.get_pos()[1]
+
     def inventory_find_free_spot(self):
         for i in range(len(self.avatar.inventory)):
             if not self.avatar.inventory[i]:
                 return i
         return len(self.avatar.inventory)
+
+    def skills_find_free_spot(self, char):
+        for i in range(len(char.skills)):
+            if not char.skills[i] and char.skills_available_this_turn[i]:
+                return i
+        return len(len(char.skills))
+
+    def mob_decision(self, mob, nearest_char):
+        x_fig, y_fig = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
+        x_end, y_end = from_screenspace_to_gridspace((nearest_char.position_x, nearest_char.position_y))
+        shortest_path = breadth_first_search_with_end(self.g, vec(x_end, y_end), vec(x_fig, y_fig),
+                                                      self.path)
+        goal = vec(x_end, y_end)
+        start = vec(x_fig, y_fig)
+
+        self.shortest_path_tiles.clear()
+        current = start + shortest_path[vec2int(start)]
+        x = None
+        y = None
+        while current != goal and heuristic(start, current) <= mob.move_range and heuristic(current,
+                                                                                            goal) >= mob.attack_range:
+            x = current.x * TILESIZE
+            y = current.y * TILESIZE
+            self.shortest_path_tiles.append((x, y))
+            # find next in path
+            current = current + shortest_path[vec2int(current)]
+        if x is not None and y is not None:
+            last_x, last_y = x / TILESIZE, y / TILESIZE
+            self.occupied_spots_by_ai.append((last_x, last_y))
+
+        mob.waypoints = self.get_shortest_path() * 1
+        # mob has to walk
+        if mob.waypoints:
+            mob.state_machine.trigger_transition("ACTION::TRANSITION_WALK")
+            mob.actions.append('walk')
+            mob.set_target_position(mob.waypoints[0][0],
+                                    mob.waypoints[0][1])
+            # mob can attack directly after walking
+            if heuristic(vec(last_x, last_y), goal) <= mob.attack_range:
+                mob.attack_after_walk = True
+                mob.target = nearest_char
+                mob.actions.append('attack')
+            else:
+                mob.attack_after_walk = False
+        else:
+            # mob can attack directly
+            mob.target = nearest_char
+            mob.state_machine.trigger_transition("ACTION::TRANSITION_ATTACK")
+            mob.actions.append('attack')
+
+    def calculate_possible_paths_character(self):
+        if not self.selected_char:
+            self.clear_path()
+            return
+
+        if not self.selected_char.can_walk:
+            self.clear_path()
+            return
+
+        self.reachable_tiles.clear()
+        self.g.walls.clear()
+        self.g.obstacles.clear()
+
+        character = self.selected_char
+        for char in self.player_chars:
+            if char != character:
+                x, y = from_screenspace_to_gridspace((char.position_x, char.position_y))
+                self.g.obstacles.append((x, y))
+        for mob in self.mobs:
+            x, y = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
+            self.g.obstacles.append((x, y))
+
+        self.calculate_path(character)
+
+    def calculate_path(self, character, move_range=None):
+        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
+        if not move_range:
+            movement_range = character.move_range
+        else:
+            movement_range = move_range
+        self.path = breadth_first_search(self.g, vec(x_fig, y_fig), movement_range)
+        self.reachable_tiles.append((x_fig * TILESIZE, y_fig * TILESIZE))
+        for node, dir in self.path.items():
+            if dir:
+                x, y = node
+                x = x * TILESIZE
+                y = y * TILESIZE
+                self.reachable_tiles.append((x, y))
+
+    def calculate_possible_attack_tiles(self, character):
+        self.clear_path()
+        self.g.walls.clear()
+        self.g.obstacles.clear()
+        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
+        self.attack_path = breadth_first_search(self.g, vec(x_fig, y_fig), character.attack_range)
+        self.attack_tiles.append((x_fig * TILESIZE, y_fig * TILESIZE))
+        for node, dir in self.attack_path.items():
+            if dir:
+                x, y = node
+                x = x * TILESIZE
+                y = y * TILESIZE
+                self.attack_tiles.append((x, y))
+
+    def calculate_shortest_path_character(self):
+        if not self.path:
+            return
+        if not self.selected_char:
+            self.clear_path()
+            return
+
+        character = self.selected_char
+        x_fig, y_fig = from_screenspace_to_gridspace((character.position_x, character.position_y))
+        x_end, y_end = from_screenspace_to_gridspace(pygame.mouse.get_pos())
+
+        shortest_path = breadth_first_search_with_end(self.g, vec(x_end, y_end), vec(x_fig, y_fig),
+                                                      self.path)
+        goal = vec(x_end, y_end)
+        # draw path from start to goal
+        start = vec(x_fig, y_fig)
+        if shortest_path:
+            self.shortest_path_tiles.clear()
+            current = start + shortest_path[vec2int(start)]
+            while current != goal and heuristic(start, current) <= character.move_range and len(
+                    self.shortest_path_tiles) < character.move_range - 1:
+                x = current.x * TILESIZE
+                y = current.y * TILESIZE
+                self.shortest_path_tiles.append((x, y))
+                # find next in path
+                current = current + shortest_path[vec2int(current)]
+            self.shortest_path_tiles.append((current.x * TILESIZE, current.y * TILESIZE))
 
 
 def from_screenspace_to_gridspace(screen_coordinates):

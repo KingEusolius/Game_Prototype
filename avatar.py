@@ -2,29 +2,31 @@ import pygame
 import numpy as np
 import os
 
+
 class Avatar_Player:
     def __init__(self):
         print('In avatar player constructor')
         classes = ['men']
         state_list = ['right']
         self.classes = {}
-        #self.classes_outlines = {}
+        # self.classes_outlines = {}
         for cl in classes:
             self.classes[f'{cl}'] = {}
-            #self.classes_outlines[f'{cl}'] = {}
+            # self.classes_outlines[f'{cl}'] = {}
             for state in state_list:
                 self.classes[f'{cl}'][f'{state}'] = []
-                #self.classes_outlines[f'{cl}'][f'{state}'] = []
+                # self.classes_outlines[f'{cl}'][f'{state}'] = []
                 for pic in os.listdir(f'graphics/heroes/{cl}/{state}'):
                     current_img = pygame.image.load(f'graphics/heroes/{cl}/{state}/{pic}').convert_alpha()
                     current_img = pygame.transform.scale(current_img, (32, 32))
                     self.classes[f'{cl}'][f'{state}'].append(current_img)
-                    #self.classes_outlines[f'{cl}'][f'{state}'].append(pygame.mask.from_surface(current_img))
+                    # self.classes_outlines[f'{cl}'][f'{state}'].append(pygame.mask.from_surface(current_img))
 
-        #print(self.classes)
+        # print(self.classes)
 
     def get_image(self, class_name, class_state, index):
         return self.classes[class_name][class_state][index]
+
 
 class Avatar:
     def __init__(self, avatar_player, class_name, chars):
@@ -38,7 +40,7 @@ class Avatar:
         self.img = avatar_player.get_image(self.class_name, self.state, self.animation_index)
         self.direction_x = 0
         self.direction_y = 0
-        self.speed = 4
+        self.speed = 2
         self.image_direction = self.direction_x
         self.dir_length = 0.01
         self.inventory = [None] * 4
@@ -63,7 +65,7 @@ class Avatar:
         if keys[pygame.K_w]:
             direction_y = -1
 
-        self.dir_length = np.sqrt(direction_x**2 + direction_y**2)
+        self.dir_length = np.sqrt(direction_x ** 2 + direction_y ** 2)
 
         if self.dir_length:
             self.direction_x = direction_x / self.dir_length
@@ -74,7 +76,21 @@ class Avatar:
             self.direction_y = 0
             self.animation_index = 0
 
-    def update(self):
+    def handle_input_mouse(self, pressed, mouse_pos):
+        self.dir_length = np.sqrt((self.position_x - mouse_pos[0]) ** 2 + (self.position_y - mouse_pos[1]) ** 2)
+        if pressed:
+            direction_x = mouse_pos[0] - self.position_x
+            direction_y = mouse_pos[1] - self.position_y
+            self.direction_x = direction_x / self.dir_length
+            self.direction_y = direction_y / self.dir_length
+            self.check_image_direction()
+            self.play_animation()
+        else:
+            self.direction_x = 0
+            self.direction_y = 0
+            self.animation_index = 0
+
+    def update(self, collision_rects):
         if self.dir_length != 0:
             self.play_animation()
         self.img = self.avatar_player.get_image(self.class_name, self.state, int(self.animation_index))
@@ -82,6 +98,7 @@ class Avatar:
             self.img = pygame.transform.flip(self.img, True, False)
         self.position_x += (self.direction_x * self.speed)
         self.position_y += (self.direction_y * self.speed)
+        self.check_collisions(collision_rects)
 
     def check_image_direction(self):
         if self.direction_x != 0:
@@ -94,7 +111,26 @@ class Avatar:
 
     def draw(self, screen):
         screen.blit(self.img, (self.position_x, self.position_y))
+        #rect = self.img.get_rect()
+        #rect.top = self.position_y
+        #rect.left = self.position_x
+        #pygame.draw.rect(screen, (0, 0, 255), rect)
 
+    def check_collisions(self, collision_rects):
+        self_rect = self.img.get_rect()
+        self_rect.top = self.position_y
+        self_rect.left = self.position_x
+        collision_tolerance = 10
+        for rect in collision_rects:
+            if self_rect.colliderect(rect):
+                if abs(self_rect.top - rect.rect.bottom) < collision_tolerance:
+                    self.position_y = rect.rect.bottom
+                elif abs(self_rect.bottom - rect.rect.top) < collision_tolerance:
+                    self.position_y = rect.rect.top - self_rect.height
+                elif abs(self_rect.left - rect.rect.right) < collision_tolerance:
+                    self.position_x = rect.rect.right
+                elif abs(self_rect.right - rect.rect.left) < collision_tolerance:
+                    self.position_x = rect.rect.left - self_rect.width
 
 
 class Avatar_Enemies_Player:
@@ -116,7 +152,7 @@ class Avatar_Enemies_Player:
                     self.classes[f'{cl}'][f'{state}'].append(current_img)
                     self.classes_outlines[f'{cl}'][f'{state}'].append(pygame.mask.from_surface(current_img))
 
-        #print(self.classes)
+        # print(self.classes)
 
     def get_image(self, class_name, class_state, index):
         return self.classes[class_name][class_state][index]
@@ -160,7 +196,7 @@ class Avatar_Enemies:
 
     def draw(self, screen):
         screen.blit(self.img, (self.position_x, self.position_y))
-        #pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        # pygame.draw.rect(screen, (255, 0, 0), self.rect)
 
     def draw_outline(self, screen):
         self.outline = self.avatar_enemies_player.get_outline(self.class_name, self.state, int(self.animation_index))

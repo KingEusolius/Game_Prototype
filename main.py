@@ -13,6 +13,7 @@ from projectiles import *
 from avatar import *
 from fight import *
 from overworld import *
+from edit_mode import *
 
 pygame.init()
 pygame.font.init()  # you have to call this at the start,
@@ -132,6 +133,7 @@ class Game:
         self.fight.set_avatar(self.avatar)
         self.fight.set_player_chars(self.avatar.chars)
         self.game = self.overworld
+        self.edit_mode = Editmode(self.set_overworld_from_edit)
 
     def set_overworld(self):
         self.fight.overlay_alpha = 255
@@ -153,8 +155,26 @@ class Game:
         self.fight.set_mobs(self.overworld.selected_enemy.mobs)
         self.fight.set_player_chars(self.avatar.chars)
         self.fight.game_celebration = False
+        self.fight.selected_char = None
+        for spot in self.fight.ui.resource_slots:
+            spot.free_spot()
 
         self.game = self.fight
+
+    def set_editmode(self):
+        self.edit_mode.set_buildings(self.overworld.buildings_player, self.overworld.buildings)
+        self.edit_mode.set_enemies(self.overworld.enemies)
+        self.edit_mode.set_img(self.overworld.background_image)
+        self.game = self.edit_mode
+
+    def set_overworld_from_edit(self):
+        self.edit_mode.overlay_alpha = 255
+        self.edit_mode.fade_in = True
+        self.edit_mode.fade_out = False
+        self.edit_mode.bool_increment_overlay = True
+        self.overworld.set_collision_rects(self.edit_mode.collision_rectangles)
+
+        self.game = self.overworld
 
     def input_handling(self):
         self.game.input_handling()
