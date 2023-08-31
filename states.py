@@ -1,4 +1,16 @@
 import pygame
+from observer import *
+
+
+class Particle_observer(Observer):
+    def __init__(self, state):
+        self.trigger_particle = False
+        self.state = state
+
+    def on_event(self):
+        print('Trigger particle')
+        self.trigger_particle = True
+
 
 
 class State_machine:
@@ -119,6 +131,8 @@ class Walk(State):
 class Attack(State):
     def __init__(self, character_reference):
         self.character = character_reference
+        self.particle_subject = Subject()
+
 
     def on_entry(self):
         self.character.animation_index = 0
@@ -130,14 +144,23 @@ class Attack(State):
             # this part should be in the on_entry function of state take_hit OR maybe not? because of the damage dealt?
             self.character.target.take_damage(self.character.attack_power)
             self.character.target = None
+            # create particle here if necessary. use observer pattern. get info from ui/character
+                # what particle? where?
+            if self.character.create_particle:
+                print("We should create a particle here")
+                self.character.particle_create(self.character.particle.particle_type, (self.character.position_x, self.character.position_y))
         else:
             # TO DO: refactor this part of the code!
             if "lich" in self.character.class_name:
                 self.character.create_projectile("death_ripple",
                                                  (self.character.target.position_x, self.character.target.position_y))
             else:
-                self.character.create_projectile(self.character.position_x, self.character.position_y,
+                pro = self.character.create_projectile(self.character.position_x, self.character.position_y,
                                                  self.character.target, self.character.attack_power)
+                if self.character.create_particle:
+                    pro.set_particle(self.character.create_particle)
+                    pro.set_particle_create(self.character.particle_create, self.character.particle)
+
 
     def on_exit(self):
         if self.character.is_mob:

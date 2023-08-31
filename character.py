@@ -107,6 +107,9 @@ class Character:
         self.state_machine = State_machine(self)
         # init target finder
         self.target_finder = NearestTarget()
+        self.create_particle = False
+        self.particle_create = None
+        self.particle = None
 
     def get_stats(self, dictionary):
         self.health = dictionary.char_dict[self.class_name]['health']
@@ -125,6 +128,10 @@ class Character:
 
     def set_notify_fight(self, ai_turn):
         self.notify_fight = ai_turn
+
+    def set_particle_create(self, func, particle):
+        self.particle_create = func
+        self.particle = particle
 
     def update(self):
         # check if animation should be over and update

@@ -8,6 +8,7 @@ from item_player import *
 import grass
 import random
 import math
+from observer import Observer
 
 TILESIZE = 64
 GRIDWIDTH = 16
@@ -16,6 +17,14 @@ DARKRED = (127, 0, 0)
 LIGHTBLUE = (71, 117, 191)
 DARKGRAY = (40, 40, 40)
 
+
+class Particle_trigger_observer(Observer):
+    def __init__(self, game_state):
+        self.game_state = game_state
+
+    def on_event(self, particle_type, position):
+        print('Trigger particle')
+        self.game_state.spawn_particle(particle_type, position)
 
 class Fight(GameClass):
     def __init__(self, set_overworld):
@@ -159,6 +168,19 @@ class Fight(GameClass):
             self.selected_char = None
 
     def input_click_on_enemy(self):
+        ui_selected = False
+        skill_idx = len(self.ui.resource_slots)
+        skill = None
+        for idx, spot in enumerate(self.ui.resource_slots):
+            if spot.active:
+                ui_selected = True
+                skill_idx = idx
+                skill = spot.skill
+
+        self.selected_char.create_particle = ui_selected
+        if ui_selected:
+            self.selected_char.set_particle_create(self.spawn_particle, skill)
+
         self.mob_selection()
         # short range units
         if self.selected_char.long_range == 0:
@@ -241,10 +263,8 @@ class Fight(GameClass):
                         if mouse_buttons[2]:
                             self.item_pick_up()
 
-                    if self.ui.on_mouse_click(pygame.mouse.get_pos()):
-                        pass
                     # this path is chosen if a character has already been selected
-                    elif self.selected_char and event.button == 1:
+                    if self.selected_char and event.button == 1:
                         state = self.mouse_selection()
                         # click on terrain
                         if state == 0:
@@ -261,6 +281,10 @@ class Fight(GameClass):
                     # character has been chosen for the first time
                     else:
                         self.input_click_on_character()
+                    # to do: only trigger/check if ui spot is selected, if left mouse button has been pressed
+                    if event.button == 1:
+                        if self.ui.on_mouse_click(pygame.mouse.get_pos()):
+                            pass
                 # keyboard input
                 if event.type == pygame.KEYDOWN:
                     # ai turn in fight
@@ -481,7 +505,9 @@ class Fight(GameClass):
 
     def create_projectile(self, start_position_x, start_position_y, target, attack_power):
         pos = (start_position_x + 32, start_position_y + 16)
-        self.projectiles.append(Arrow(pos, target, attack_power))
+        pro = Arrow(pos, target, attack_power)
+        self.projectiles.append(pro)
+        return pro
 
     def mouse_selection(self):
         self.mouse_position = from_screenspace_to_gridspace(pygame.mouse.get_pos())
@@ -533,7 +559,7 @@ class Fight(GameClass):
                 i = self.inventory_find_free_spot()
                 if i <= len(self.avatar.inventory) - 1:
                     self.avatar.inventory[i] = it
-                    self.ui.set_spot_occupied(i, it.particle_type, it.inventory_img)
+                    self.ui.set_spot_occupied(i, it)
                     self.items.remove(it)
 
     def item_selection(self):

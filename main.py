@@ -15,6 +15,7 @@ from fight import *
 from overworld import *
 from edit_mode import *
 
+
 pygame.init()
 pygame.font.init()  # you have to call this at the start,
 
@@ -43,6 +44,9 @@ my_font = pygame.font.SysFont('New Times Roman', 30)
 class GameState(Enum):
     AVATAR = 1
     COMBAT = 2
+
+
+
 
 
 class Game:
@@ -98,10 +102,12 @@ class Game:
             Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 3), 'archer_major',
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
-                      None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 5), 'peasant_minor',
+                      None),
+            Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 5), 'peasant_minor',
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
-                      None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 7), 'peasant_minor',
+                      None),
+            Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 7), 'peasant_minor',
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
                       None)])
@@ -119,10 +125,12 @@ class Game:
                                    Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 6),
                                              'skeleton_minor', self.fight.spawn_item,
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
-                                             self.fight.create_projectile, None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 4),
+                                             self.fight.create_projectile, None),
+                                   Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 4),
                                              'lich_minor', self.fight.spawn_item,
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
-                                             self.fight.spawn_particle, None), Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 8),
+                                             self.fight.spawn_particle, None),
+                                   Character(animation_player, self.fight.clear_path, pygame.math.Vector2(10, 8),
                                              'skeleton_minor', self.fight.spawn_item,
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
                                              self.fight.create_projectile, None)])]
@@ -158,6 +166,8 @@ class Game:
         self.fight.selected_char = None
         for spot in self.fight.ui.resource_slots:
             spot.free_spot()
+            # for character in self.avatar.chars:
+            #    spot.subject.register_observer(character.state_machine.attack.particle_observer)
 
         self.game = self.fight
 
@@ -209,7 +219,6 @@ char_dictionary = Character_Dictionary()
 animation_player = Animation_Player(char_dictionary)
 avatar_player = Avatar_Player()
 avatar_enemies_player = Avatar_Enemies_Player()
-
 
 game = Game()
 mouse_down = False

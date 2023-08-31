@@ -21,6 +21,16 @@ class Arrow:
         perp = pygame.math.Vector2(self.direction_x, self.direction_y)
         angle = norm.angle_to(perp)
         self.img = pygame.transform.rotate(self.img, -45 - angle)
+        self.create_particle = False
+        self.particle_create = None
+        self.particle = None
+
+    def set_particle(self, part):
+        self.create_particle = part
+
+    def set_particle_create(self, func, particle):
+        self.particle_create = func
+        self.particle = particle
 
     def update(self):
         self.position_x += self.direction_x * self.speed
@@ -32,6 +42,9 @@ class Arrow:
             self.hit = True
             self.target.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
             self.target.take_damage(self.attack_power)
+            # create particle here if necessary. use observer pattern. get info from ui/character
+            if self.create_particle:
+                self.particle_create(self.particle.particle_type, (self.position_x, self.position_y))
 
     def draw(self, screen):
         screen.blit(self.img, (self.position_x, self.position_y))
