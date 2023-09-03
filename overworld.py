@@ -19,7 +19,7 @@ class Overworld(GameClass):
         self.buildings.append(Building(self.buildings_player, 11 * 64, 5 * 64, "stables"))
         self.background_image = None
         # debug code
-        self.enemies[0].mobs[0].set_items(['sword', 'crossbow', 'spell'])
+        self.enemies[0].mobs[0].set_items(['sword', 'crossbow', 'spell', 'spell'])
         self.enemies[1].mobs[0].set_items(['book'])
         self.enemies[2].mobs[1].set_items(['horse'])
         # test for camera

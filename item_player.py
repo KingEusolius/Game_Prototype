@@ -86,6 +86,7 @@ class Item:
         self.inventory_img = pygame.transform.scale(self.inventory_img, (64, 64))
 
         self.upgrades = [dictionary.item_dict[self.item_type]['upgrades']]
+        self.upgrade = int(dictionary.item_dict[self.item_type]['upgrade'])
         max_width = 0
         text_surfaces = []
         for up in self.upgrades:

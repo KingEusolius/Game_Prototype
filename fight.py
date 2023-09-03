@@ -78,6 +78,9 @@ class Fight(GameClass):
         self.can_ai_turn = False
         self.selected_char = None
         self.player_turn = True
+        self.selected_skill = None
+        self.selected_char_skill = None
+        self.selected_skill_idx = -1
 
     def set_avatar(self, avatar):
         self.avatar = avatar
@@ -141,6 +144,20 @@ class Fight(GameClass):
                 self.selected_char.move_range -= len(self.selected_char.waypoints)
 
     def input_click_on_character(self):
+        if self.selected_skill:
+            ui_selected = True
+        else:
+            ui_selected = False
+        if ui_selected:
+            skill = self.selected_skill
+            self.spawn_particle(skill.particle_type, pygame.mouse.get_pos())
+            self.avatar.inventory[self.selected_skill_idx] = None
+            self.ui.item_slots[self.selected_skill_idx].free_spot()
+
+            self.selected_skill = None
+            self.selected_skill_idx = -1
+            return
+
         self.clear_path()
         self.character_selection()
         for spot in self.ui.resource_slots:
@@ -151,6 +168,17 @@ class Fight(GameClass):
             elif self.selected_char.can_attack:
                 self.calculate_possible_attack_tiles(self.selected_char)
         self.calc_if_enemy_in_range()
+
+    def input_click_on_skill(self):
+        for idx, spot in enumerate(self.ui.resource_slots):
+            if spot.active:
+                self.selected_char_skill = spot.skill
+                self.selected_skill_idx = idx
+
+        for idx, spot in enumerate(self.ui.item_slots):
+            if spot.active:
+                self.selected_skill = spot.skill
+                self.selected_skill_idx = idx
 
     def unit_transition_to_attack(self):
         char_x, char_y = self.selected_char.position_x, \
@@ -168,18 +196,20 @@ class Fight(GameClass):
             self.selected_char = None
 
     def input_click_on_enemy(self):
-        ui_selected = False
-        skill_idx = len(self.ui.resource_slots)
-        skill = None
-        for idx, spot in enumerate(self.ui.resource_slots):
-            if spot.active:
-                ui_selected = True
-                skill_idx = idx
-                skill = spot.skill
+        if self.selected_char_skill:
+            ui_selected = True
+        else:
+            ui_selected = False
 
-        self.selected_char.create_particle = ui_selected
-        if ui_selected:
-            self.selected_char.set_particle_create(self.spawn_particle, skill)
+        if self.selected_char:
+            self.selected_char.create_particle = ui_selected
+            if ui_selected:
+                skill = self.selected_char_skill
+                self.selected_char.set_particle_create(self.spawn_particle, skill)
+                self.selected_char.skills[self.selected_skill_idx] = None
+                self.ui.resource_slots[self.selected_skill_idx].free_spot()
+                self.selected_char_skill = None
+                self.selected_skill_idx = -1
 
         self.mob_selection()
         # short range units
@@ -216,8 +246,15 @@ class Fight(GameClass):
         self.clear_path()
         self.selected_char = None
         self.selected_mob = None
+        self.selected_skill = None
+        self.selected_char_skill = None
+        self.selected_skill_idx = -1
+        self.ui.on_mouse_click(pygame.mouse.get_pos())
         for spot in self.ui.resource_slots:
             spot.free_spot()
+        #for spot in self.ui.item_slots:
+        #    spot.free_spot()
+
         for char in self.player_chars:
             char.is_selected(False)
         for mob in self.mobs:
@@ -262,9 +299,13 @@ class Fight(GameClass):
                             it.check_overlap(pygame.mouse.get_pos())
                         if mouse_buttons[2]:
                             self.item_pick_up()
+                            self.input_clear_selection()
+                            return
 
                     # this path is chosen if a character has already been selected
                     if self.selected_char and event.button == 1:
+                        #if self.selected_skill:
+                        #    self.handle_skill()
                         state = self.mouse_selection()
                         # click on terrain
                         if state == 0:
@@ -275,16 +316,24 @@ class Fight(GameClass):
                         # click on enemy
                         elif state == 2 and self.selected_char.can_attack:
                             self.input_click_on_enemy()
+                        # click on skill
+                        elif state == 4:
+                            self.input_click_on_skill()
                     # right click means everything is reset
                     elif event.button == 3:
                         self.input_clear_selection()
                     # character has been chosen for the first time
                     else:
-                        self.input_click_on_character()
-                    # to do: only trigger/check if ui spot is selected, if left mouse button has been pressed
-                    if event.button == 1:
-                        if self.ui.on_mouse_click(pygame.mouse.get_pos()):
-                            pass
+                        #if self.selected_skill:
+                        #    self.handle_skill()
+                        state = self.mouse_selection()
+                        if state == 1:
+                            self.input_click_on_character()
+                        elif state == 4:
+                            self.input_click_on_skill()
+
+
+
                 # keyboard input
                 if event.type == pygame.KEYDOWN:
                     # ai turn in fight
@@ -511,6 +560,9 @@ class Fight(GameClass):
 
     def mouse_selection(self):
         self.mouse_position = from_screenspace_to_gridspace(pygame.mouse.get_pos())
+        if self.ui.on_mouse_click(pygame.mouse.get_pos()):
+            return 4
+
         for char in self.player_chars:
             char_position = from_screenspace_to_gridspace((char.position_x, char.position_y))
             if char_position == self.mouse_position:
@@ -564,7 +616,7 @@ class Fight(GameClass):
 
     def item_selection(self):
         for it in self.items:
-            if it.selected:
+            if it.selected and not it.upgrade:
                 it.position_x = pygame.mouse.get_pos()[0]
                 it.position_y = pygame.mouse.get_pos()[1]
 

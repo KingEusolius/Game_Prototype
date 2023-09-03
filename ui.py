@@ -28,24 +28,14 @@ class UI:
         self.inventory = inventory
 
     def on_mouse_click(self, mouse_pos):
+        spot_selected = False
         for rect in self.item_slots:
             if rect.on_mouse_click(mouse_pos):
-                self.inventory[rect.index] = None
-                rect.spawn_particle(rect.skill.particle_type, pygame.mouse.get_pos())
-                rect.free_spot()
-                return True
+                spot_selected = True
         for rect in self.resource_slots:
-            clicked = rect.on_mouse_click(mouse_pos)
-            if clicked:
-                #self.char.can_attack = False
-                rect.active = True
-                index = rect.index
-                self.char.skills_available_this_turn[index] = False
-                self.char.skills[index] = None
-                return True
-            #else:
-            #    rect.active = False
-        return False
+            if rect.on_mouse_click(mouse_pos):
+                spot_selected = True
+        return spot_selected
 
     def set_spot_occupied(self, index, skill):
         self.item_slots[index].occupy_spot(skill)
@@ -96,23 +86,13 @@ class UI_Skill:
         #self.subject.register_observer(self.character.state_machine.attack.particle_observer)
 
     def on_mouse_click(self, mouse_pos):
-        if self.active and self.occupied:
-            # tell states/projectiles, which particle/skill to use
-            # here notify observer
-            #self.spawn_particle(self.skill.particle_type, pygame.mouse.get_pos())
-            #self.free_spot()
-            self.active = False
-            self.color = (255, 255, 200)
-            return True
-
         if self.rect.collidepoint(mouse_pos):
-            print('Skill active')
             self.active = True
             self.color = (255, 0, 0)
         else:
             self.active = False
             self.color = (255, 255, 200)
-        return False
+        return self.active
 
     def occupy_spot(self, skill):
         self.occupied = True
