@@ -43,15 +43,15 @@ class Building:
         self.img = self.building_player.get_image(self.class_name, int(self.animation_index))
         self.outline = self.building_player.get_outline(self.class_name, int(self.animation_index))
 
-    def is_selected(self, mouse_pos):
-        self.selected = (self.position_x <= mouse_pos[0] < self.position_x + 64 and self.position_y <= mouse_pos[
-            1] < self.position_y + 64)
+    def is_selected(self, mouse_pos, x_offset, y_offset):
+        self.selected = (self.position_x + x_offset <= mouse_pos[0] < self.position_x + x_offset + 64 and self.position_y + y_offset <= mouse_pos[
+            1] < self.position_y + y_offset + 64)
 
-    def draw(self, screen):
-        screen.blit(self.img, (self.position_x, self.position_y))
+    def draw(self, screen, x_offset=0, y_offset=0):
+        screen.blit(self.img, (self.position_x + x_offset, self.position_y + y_offset))
 
         if self.selected:
             for point in self.outline:
                 x = point[0] + self.position_x
                 y = point[1] + self.position_y
-                pygame.draw.line(screen, (255, 0, 0), (x, y), (x, y), 2)
+                pygame.draw.line(screen, (255, 0, 0), (x + x_offset, y + y_offset), (x + x_offset, y + y_offset), 2)

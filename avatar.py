@@ -109,8 +109,8 @@ class Avatar:
         if self.animation_index >= 4:
             self.animation_index = 0
 
-    def draw(self, screen):
-        screen.blit(self.img, (self.position_x, self.position_y))
+    def draw(self, screen, x_offset=0, y_offset=0):
+        screen.blit(self.img, (self.position_x + x_offset, self.position_y + y_offset))
         #rect = self.img.get_rect()
         #rect.top = self.position_y
         #rect.left = self.position_x
@@ -194,13 +194,20 @@ class Avatar_Enemies:
         self.defeated = True
         self.state = 'dead'
 
-    def draw(self, screen):
-        screen.blit(self.img, (self.position_x, self.position_y))
+    def draw(self, screen, x_offset=0, y_offset=0):
+        screen.blit(self.img, (self.position_x + x_offset, self.position_y + y_offset))
+        if self.in_range:
+            self.outline = self.avatar_enemies_player.get_outline(self.class_name, self.state,
+                                                                  int(self.animation_index))
+            for point in self.outline:
+                x = point[0] + self.position_x + x_offset
+                y = point[1] + self.position_y + y_offset
+                pygame.draw.line(screen, (255, 0, 0), (x, y), (x, y), 1)
         # pygame.draw.rect(screen, (255, 0, 0), self.rect)
 
-    def draw_outline(self, screen):
+    def draw_outline(self, screen, x_offset=0, y_offset=0):
         self.outline = self.avatar_enemies_player.get_outline(self.class_name, self.state, int(self.animation_index))
         for point in self.outline:
-            x = point[0] + self.position_x
-            y = point[1] + self.position_y
+            x = point[0] + self.position_x + x_offset
+            y = point[1] + self.position_y + y_offset
             pygame.draw.line(screen, (255, 0, 0), (x, y), (x, y), 1)
