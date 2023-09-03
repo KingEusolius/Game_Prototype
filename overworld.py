@@ -75,9 +75,7 @@ class Overworld(GameClass):
                         mouse_pos = list(pygame.mouse.get_pos())
                         mouse_pos[0] -= x_offset
                         mouse_pos[1] -= y_offset
-                        print(mouse_pos, enemy.rect)
                         if enemy.rect.collidepoint(mouse_pos) and not enemy.defeated and enemy.in_range:
-                            print('Hit')
                             self.trigger_transition()
                             self.selected_enemy = enemy
 

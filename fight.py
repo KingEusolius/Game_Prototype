@@ -565,8 +565,14 @@ class Fight(GameClass):
 
         for char in self.player_chars:
             char_position = from_screenspace_to_gridspace((char.position_x, char.position_y))
-            if char_position == self.mouse_position:
+            pos = pygame.mouse.get_pos()
+            pos_in_mask = pos[0] - char.img.get_rect().x - char.position_x, pos[1] - char.img.get_rect().y - char.position_y
+            mask = pygame.mask.from_surface(char.img)
+            touching = char_position == self.mouse_position and mask.get_at(pos_in_mask)
+            if touching:
                 return 1
+            #if char_position == self.mouse_position:
+            #    return 1
 
         for mob in self.mobs:
             mob_position = from_screenspace_to_gridspace((mob.position_x, mob.position_y))
