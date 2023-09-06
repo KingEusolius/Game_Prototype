@@ -135,7 +135,7 @@ class Game:
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
                                              self.fight.create_projectile, None)])]
 
-        self.overworld = Overworld(self.avatar, self.avatar_enemies, self.set_fight)
+        self.overworld = Overworld(self.avatar, self.avatar_enemies, self.set_editmode)
         self.overworld.set_img(self.overworld_image)
         self.fight.set_img(self.background_image)
         self.fight.set_avatar(self.avatar)

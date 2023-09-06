@@ -97,8 +97,9 @@ class Avatar:
         if self.image_direction < 0:
             self.img = pygame.transform.flip(self.img, True, False)
         self.position_x += (self.direction_x * self.speed)
+        self.check_collisions(collision_rects, 'horizontal')
         self.position_y += (self.direction_y * self.speed)
-        self.check_collisions(collision_rects)
+        self.check_collisions(collision_rects, 'vertical')
 
     def check_image_direction(self):
         if self.direction_x != 0:
@@ -111,26 +112,32 @@ class Avatar:
 
     def draw(self, screen, x_offset=0, y_offset=0):
         screen.blit(self.img, (self.position_x + x_offset, self.position_y + y_offset))
-        #rect = self.img.get_rect()
-        #rect.top = self.position_y
-        #rect.left = self.position_x
-        #pygame.draw.rect(screen, (0, 0, 255), rect)
+        rect = self.img.get_rect().scale_by(0.5)
 
-    def check_collisions(self, collision_rects):
-        self_rect = self.img.get_rect()
-        self_rect.top = self.position_y
-        self_rect.left = self.position_x
-        collision_tolerance = 10
-        for rect in collision_rects:
-            if self_rect.colliderect(rect):
-                if abs(self_rect.top - rect.rect.bottom) < collision_tolerance:
-                    self.position_y = rect.rect.bottom
-                elif abs(self_rect.bottom - rect.rect.top) < collision_tolerance:
-                    self.position_y = rect.rect.top - self_rect.height
-                elif abs(self_rect.left - rect.rect.right) < collision_tolerance:
-                    self.position_x = rect.rect.right
-                elif abs(self_rect.right - rect.rect.left) < collision_tolerance:
-                    self.position_x = rect.rect.left - self_rect.width
+        rect.top = self.position_y + 8
+        rect.left = self.position_x + 8
+        pygame.draw.rect(screen, (0, 0, 255), rect)
+
+    def check_collisions(self, collision_rects, dir):
+        self_rect = self.img.get_rect().scale_by(0.5)
+        self_rect.top = self.position_y + 8
+        self_rect.left = self.position_x + 8
+        if dir == 'horizontal':
+            for rect in collision_rects:
+                if self_rect.colliderect(rect):
+                    if self.direction_x > 0:
+                        self.position_x = rect.rect.left - 24
+                    if self.direction_x < 0:
+                        self.position_x = rect.rect.right - 8
+
+        if dir == "vertical":
+            for rect in collision_rects:
+                if self_rect.colliderect(rect):
+                    if self.direction_y > 0:
+                        self.position_y = rect.rect.top - 24
+                    if self.direction_y < 0:
+                        self.position_y = rect.rect.bottom - 8
+
 
 
 class Avatar_Enemies_Player:

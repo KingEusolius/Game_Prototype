@@ -96,9 +96,11 @@ class Overworld(GameClass):
 
         x_offset = -(self.avatar.position_x - screen_width_half) - 16
         y_offset = -(self.avatar.position_y - screen_height_half) - 16
+        x_offset = 0
+        y_offset = 0
         self.draw_background(self.camera_img, x_offset, y_offset)
 
-        if 0:
+        if 1:
             sorted_list = []
             sorted_list.append(self.avatar)
             for enemy in self.enemies:
@@ -109,7 +111,7 @@ class Overworld(GameClass):
             for element in sorted(sorted_list, key=lambda element: element.position_y):
                 element.draw(self.camera_img, x_offset, y_offset)
 
-        if 1:
+        if 0:
             self.avatar.draw(self.camera_img, x_offset, y_offset)
             for enemy in self.enemies:
                 enemy.draw(self.camera_img, x_offset, y_offset)
@@ -119,8 +121,8 @@ class Overworld(GameClass):
             for building in self.buildings:
                 building.draw(self.camera_img, x_offset, y_offset)
 
-        # for rect in self.collision_rectangles:
-        #    rect.draw(self.camera_img)
+        for rect in self.collision_rectangles:
+           rect.draw(self.camera_img)
 
         self.transition_drawing(self.camera_img)
 
