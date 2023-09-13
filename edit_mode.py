@@ -3,11 +3,10 @@ from game_class import GameClass
 
 
 class CollisionRectangle:
-    def __init__(self, rect, position):
+    def __init__(self, rect):
         self.rect = rect
         self.selected = False
         self.color = (255, 0, 0)
-        self.position = position
 
     def draw(self, screen):
         pygame.draw.rect(screen, self.color, self.rect, 4)
@@ -49,7 +48,7 @@ class Editmode(GameClass):
             keyboard_keys = pygame.key.get_pressed()
             if event.type == pygame.MOUSEBUTTONDOWN and keys[1]:
                 mouse_position = pygame.mouse.get_pos()
-                rect = CollisionRectangle(pygame.Rect(mouse_position, (40, 40)), mouse_position)
+                rect = CollisionRectangle(pygame.Rect(mouse_position, (40, 40)))
 
                 self.collision_rectangles.append(rect)
             elif event.type == pygame.MOUSEBUTTONDOWN and keys[2]:
@@ -103,6 +102,9 @@ class Editmode(GameClass):
 
     def set_img(self, img):
         self.img = img
+
+    def set_collision_rects(self, rects):
+        self.collision_rectangles = rects
 
     def draw_background(self, screen):
         screen.blit(self.img, (0, 0))

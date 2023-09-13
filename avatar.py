@@ -112,11 +112,11 @@ class Avatar:
 
     def draw(self, screen, x_offset=0, y_offset=0):
         screen.blit(self.img, (self.position_x + x_offset, self.position_y + y_offset))
-        rect = self.img.get_rect().scale_by(0.5)
+        #rect = self.img.get_rect().scale_by(0.5)
 
-        rect.top = self.position_y + 8
-        rect.left = self.position_x + 8
-        pygame.draw.rect(screen, (0, 0, 255), rect)
+        #rect.top = self.position_y + 8
+        #rect.left = self.position_x + 8
+        #pygame.draw.rect(screen, (0, 0, 255), rect)
 
     def check_collisions(self, collision_rects, dir):
         self_rect = self.img.get_rect().scale_by(0.5)

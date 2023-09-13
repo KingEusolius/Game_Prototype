@@ -4,6 +4,8 @@ from game_class import GameClass
 import pygame, sys
 import numpy as np
 from buildings import *
+import pickle
+from edit_mode import CollisionRectangle
 
 screen_width_half = 64 * 8
 screen_height_half = 64 * 5
@@ -41,6 +43,31 @@ class Overworld(GameClass):
 
         self.collision_rectangles = []
 
+    def save_data(self):
+        # first remove old pickle file
+        if os.path.exists('examplePickle'):
+            os.remove('examplePickle')
+        # Its important to use binary mode
+        dbfile = open('examplePickle', 'ab')
+        rect_list = []
+        # source, destination
+        for rect in self.collision_rectangles:
+            rect_list.append(rect.rect)
+        pickle.dump(rect_list, dbfile)
+        dbfile.close()
+
+    def load_data(self):
+        if not os.path.exists('examplePickle'):
+            print('No such file')
+            return
+        # for reading also binary mode is important
+        dbfile = open('examplePickle', 'rb')
+        db = pickle.load(dbfile)
+        self.collision_rectangles.clear()
+        for rect in db:
+            self.collision_rectangles.append(CollisionRectangle(pygame.Rect(rect)))
+        dbfile.close()
+
     def set_img(self, img):
         self.background_image = img
 
@@ -59,6 +86,10 @@ class Overworld(GameClass):
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_p:
                         self.trigger_transition()
+                    if event.key == pygame.K_k:
+                        self.save_data()
+                    if event.key == pygame.K_l:
+                        self.load_data()
                     # if event.key == pygame.K_e:
 
                 keys = pygame.key.get_pressed()
@@ -96,8 +127,8 @@ class Overworld(GameClass):
 
         x_offset = -(self.avatar.position_x - screen_width_half) - 16
         y_offset = -(self.avatar.position_y - screen_height_half) - 16
-        x_offset = 0
-        y_offset = 0
+        #x_offset = 0
+        #y_offset = 0
         self.draw_background(self.camera_img, x_offset, y_offset)
 
         if 1:
@@ -121,8 +152,8 @@ class Overworld(GameClass):
             for building in self.buildings:
                 building.draw(self.camera_img, x_offset, y_offset)
 
-        for rect in self.collision_rectangles:
-           rect.draw(self.camera_img)
+        #for rect in self.collision_rectangles:
+        #   rect.draw(self.camera_img)
 
         self.transition_drawing(self.camera_img)
 

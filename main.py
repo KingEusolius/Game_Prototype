@@ -135,8 +135,9 @@ class Game:
                                              char_dictionary, self.fight.calculate_possible_attack_tiles, True,
                                              self.fight.create_projectile, None)])]
 
-        self.overworld = Overworld(self.avatar, self.avatar_enemies, self.set_editmode)
+        self.overworld = Overworld(self.avatar, self.avatar_enemies, self.set_fight)
         self.overworld.set_img(self.overworld_image)
+        self.overworld.load_data()
         self.fight.set_img(self.background_image)
         self.fight.set_avatar(self.avatar)
         self.fight.set_player_chars(self.avatar.chars)
@@ -175,6 +176,7 @@ class Game:
         self.edit_mode.set_buildings(self.overworld.buildings_player, self.overworld.buildings)
         self.edit_mode.set_enemies(self.overworld.enemies)
         self.edit_mode.set_img(self.overworld.background_image)
+        self.edit_mode.set_collision_rects(self.overworld.collision_rectangles)
         self.game = self.edit_mode
 
     def set_overworld_from_edit(self):
