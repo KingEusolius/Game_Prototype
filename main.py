@@ -110,7 +110,8 @@ class Game:
             Character(animation_player, self.fight.clear_path, pygame.math.Vector2(4, 7), 'peasant_minor',
                       self.fight.spawn_item,
                       char_dictionary, self.fight.calculate_possible_attack_tiles, False, self.fight.create_projectile,
-                      None)])
+                      None)
+        ])
         self.avatar_enemies = [Avatar_Enemies(avatar_enemies_player, 115, 130, 'imp_minor', [
             Character(animation_player, self.fight.clear_path, pygame.math.Vector2(7, 3), 'skeleton_minor',
                       self.fight.spawn_item,
@@ -136,6 +137,7 @@ class Game:
                                              self.fight.create_projectile, None)])]
 
         self.overworld = Overworld(self.avatar, self.avatar_enemies, self.set_fight)
+        pygame.mouse.set_visible(True)
         self.overworld.set_img(self.overworld_image)
         self.overworld.load_data()
         self.fight.set_img(self.background_image)
@@ -145,6 +147,7 @@ class Game:
         self.edit_mode = Editmode(self.set_overworld_from_edit)
 
     def set_overworld(self):
+        pygame.mouse.set_visible(True)
         self.fight.overlay_alpha = 255
         self.fight.fade_in = True
         self.fight.fade_out = False
@@ -155,6 +158,7 @@ class Game:
         self.game = self.overworld
 
     def set_fight(self):
+        pygame.mouse.set_visible(False)
         self.fight.overlay_alpha = 255
         self.fight.fade_in = True
         self.fight.fade_out = False

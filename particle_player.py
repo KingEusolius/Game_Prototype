@@ -6,7 +6,7 @@ class Particle_Player:
     def __init__(self):
         print('In particle player constructor')
         particles = ['inferno', 'update', 'sword_update', 'spear_update', 'crossbow_update', 'horse_update',
-                     'acid_splash', 'death_ripple']
+                     'acid_splash', 'death_ripple', 'level_update']
         self.particles = {}
         for pl in particles:
             self.particles[f'{pl}'] = []
@@ -78,6 +78,11 @@ class Particle:
                     player.class_name = "cavalier_minor"
                     player.get_stats(player.dictionary)
 
+        elif particle_type == 'level_update':
+            for player in player_list:
+                if self.position_x == player.position_x and self.position_y == player.position_y:
+                    player.state_machine.trigger_transition("ACTION::TRANSITION_HIT")
+
     def play_animation(self):
         self.animation_index += 0.2
         if self.particle_player.is_animation_over(self.animation_index):
@@ -90,7 +95,7 @@ class Particle:
         finished = self.play_animation()
 
         if finished:
-            self.clear_particle()
+            self.clear_particle(self)
 
     def draw(self, screen):
         screen.blit(self.img, (self.position_x, self.position_y))

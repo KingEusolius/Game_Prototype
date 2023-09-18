@@ -5,6 +5,7 @@ from particle_player import *
 from pathfinding import *
 from projectiles import *
 from item_player import *
+from mouse import *
 import grass
 import random
 import math
@@ -81,6 +82,10 @@ class Fight(GameClass):
         self.selected_skill = None
         self.selected_char_skill = None
         self.selected_skill_idx = -1
+
+
+        # mouse
+        self.mouse = Mouse()
 
     def set_avatar(self, avatar):
         self.avatar = avatar
@@ -350,7 +355,7 @@ class Fight(GameClass):
 
     def update(self):
         current_mouse_pos = from_screenspace_to_gridspace(pygame.mouse.get_pos())
-
+        self.mouse.update()
         if self.mouse_position != current_mouse_pos and self.calculate_new_path:
             self.calculate_shortest_path_character()
             self.calc_if_enemy_in_range()
@@ -392,6 +397,9 @@ class Fight(GameClass):
 
         if victory and not self.game_celebration:
             self.game_celebration = True
+            for char in self.player_chars:
+                char.set_particle_create(self.spawn_particle, None)
+                char.check_for_level_update()
             for mob in self.mobs:
                 self.spawn_item((mob.position_x, mob.position_y), mob.items)
 
@@ -402,6 +410,7 @@ class Fight(GameClass):
         self.draw_characters(screen)
 
         self.draw_ui(screen)
+        self.mouse.draw(screen)
 
         self.transition_drawing(screen)
 
@@ -436,9 +445,11 @@ class Fight(GameClass):
     def draw_ui(self, screen):
         self.ui.draw(screen, self.selected_char)
 
-    def clear_particle(self):
-        cur_particle = self.particles.pop(0)
-        del cur_particle
+    def clear_particle(self, particle):
+        #cur_particle = self.particles.pop(0)
+        #del cur_particle
+        if particle in self.particles:
+            self.particles.remove(particle)
 
     def spawn_particle(self, particle_type, position):
         pos = from_screenspace_to_gridspace(position)

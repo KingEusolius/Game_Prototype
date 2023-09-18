@@ -56,7 +56,13 @@ class Character:
         self.can_attack = True
         self.can_walk = True
         self.dictionary = dictionary
+        # experience
+        self.exp = 0
+        self.level = 1
+        self.exp_for_next_level = 100
+        self.draw_update_exp = 0
         self.get_stats(dictionary)
+
         if is_mob:
             self.direction_x = -1
         else:
@@ -111,9 +117,10 @@ class Character:
         self.particle_create = None
         self.particle = None
 
+
     def get_stats(self, dictionary):
         self.health = dictionary.char_dict[self.class_name]['health']
-        self.attack_power = dictionary.char_dict[self.class_name]['attack_power']
+        self.attack_power = dictionary.char_dict[self.class_name]['attack_power'] + self.level - 1
         self.speed = dictionary.char_dict[self.class_name]['speed']
         self.long_range = dictionary.char_dict[self.class_name]['long_range']
         self.attack_range = dictionary.char_dict[self.class_name]['attack_range']
@@ -223,7 +230,8 @@ class Character:
             self.outline = self.anim_player.get_outline(self.class_name, self.state, int(self.animation_index))
             self.calc_outline(screen, (255, 215, 0))
 
-        screen.blit(self.stats_img, (self.position_x, self.position_y - 16))
+        screen.blit(self.stats_img, (self.position_x, self.position_y - 20))
+        self.draw_exp(screen)
 
     def calc_outline(self, screen, color):
         for point in self.outline:
@@ -233,3 +241,26 @@ class Character:
                 x = point[0] + self.position_x
             y = point[1] + self.position_y
             pygame.draw.line(screen, color, (x, y), (x, y), 4)
+
+    def check_for_level_update(self):
+        self.exp += 340
+        #if self.exp >= self.exp_for_next_level:
+        #    self.attack_power += 1
+        #    self.exp_for_next_level += 100
+        #    self.update_status()
+
+    def draw_exp(self, screen):
+        if not self.is_mob:
+            pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(self.position_x, self.position_y - 5, 64, 10), 2)
+            if self.exp > 0:
+                pygame.draw.line(screen, (255, 215, 0), (self.position_x + 2, self.position_y - 1), (self.position_x + 2 + self.draw_update_exp / self.exp_for_next_level * 64, self.position_y - 1), 6)
+                if self.draw_update_exp < self.exp:
+                    self.draw_update_exp += 1
+                    if self.draw_update_exp >= self.exp_for_next_level:
+                        self.particle_create("level_update",  (self.position_x, self.position_y))
+                        self.draw_update_exp -= self.exp_for_next_level
+                        self.exp -= self.exp_for_next_level
+                        self.attack_power += 1
+                        self.exp_for_next_level += 100
+                        self.level += 1
+                        self.update_status()
