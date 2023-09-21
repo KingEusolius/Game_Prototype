@@ -12,7 +12,6 @@ class Particle_observer(Observer):
         self.trigger_particle = True
 
 
-
 class State_machine:
     def __init__(self, character_reference):
         self.idle = Idle(character_reference)
@@ -133,7 +132,6 @@ class Attack(State):
         self.character = character_reference
         self.particle_subject = Subject()
 
-
     def on_entry(self):
         self.character.animation_index = 0
         self.character.get_direction(self.character.target.position_x, self.character.target.position_y)
@@ -145,10 +143,11 @@ class Attack(State):
             self.character.target.take_damage(self.character.attack_power)
             self.character.target = None
             # create particle here if necessary. use observer pattern. get info from ui/character
-                # what particle? where?
+            # what particle? where?
             if self.character.create_particle:
                 print("We should create a particle here")
-                self.character.particle_create(self.character.particle.particle_type, (self.character.position_x, self.character.position_y))
+                self.character.particle_create(self.character.particle.particle_type,
+                                               (self.character.position_x, self.character.position_y))
         else:
             # TO DO: refactor this part of the code!
             if "lich" in self.character.class_name:
@@ -156,16 +155,16 @@ class Attack(State):
                                                  (self.character.target.position_x, self.character.target.position_y))
             else:
                 pro = self.character.create_projectile(self.character.position_x, self.character.position_y,
-                                                 self.character.target, self.character.attack_power)
+                                                       self.character.target, self.character.attack_power)
                 if self.character.create_particle:
                     pro.set_particle(self.character.create_particle)
                     pro.set_particle_create(self.character.particle_create, self.character.particle)
-
 
     def on_exit(self):
         if self.character.is_mob:
             self.character.actions.pop(0)
         self.character.can_attack = False
+        self.character.nr_actions -= 1
 
     def update(self, is_finished):
         if not is_finished:

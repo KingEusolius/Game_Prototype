@@ -43,23 +43,31 @@ class UI:
     def draw(self, screen, char):
         for idx, rect in enumerate(self.item_slots):
             rect.draw(screen, self.screen_width // 2 - (self.nr_item_slots // 2 - idx) * 64, self.screen_height - 64)
+            rect.draw_outline(screen, self.screen_width // 2 - (self.nr_item_slots // 2 - idx) * 64, self.screen_height - 64)
         self.char = char
+
+        for idx, rect in enumerate(self.resource_slots):
+            rect.draw(screen, self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64)
 
         if char:
             for idx, item in enumerate(char.skills):
                 if item:
-                    screen.blit(item.inventory_img, (self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64))
-                    if char.skills_available_this_turn[idx]:
-                        self.resource_slots[idx].occupy_spot(char.skills[idx])
-                        self.resource_slots[idx].set_character(char)
-                    else:
-                        screen.blit(self.gray_img, (self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64), special_flags=pygame.BLEND_RGBA_SUB)
+                    #screen.blit(item.inventory_img, (self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64))
+
+                    self.resource_slots[idx].occupy_spot(char.skills[idx])
+                    self.resource_slots[idx].set_character(char)
+
+                    if char.nr_actions <= 0:
+                        screen.blit(self.gray_img, (self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64), special_flags=pygame.BLEND_RGBA_ADD)
                 else:
                     self.resource_slots[idx].free_spot()
+
         else:
             self.resource_slots[idx].free_spot()
+
         for idx, rect in enumerate(self.resource_slots):
-            rect.draw(screen, self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64)
+            rect.draw_outline(screen, self.screen_width - 64, self.screen_height // 2 - (self.nr_resource_slots // 2 - idx) * 64)
+
 
 
 class UI_Skill:
@@ -108,4 +116,7 @@ class UI_Skill:
         screen.blit(self.standard_img, (position_x, position_y))
         if self.img != self.standard_img:
             screen.blit(self.img, (position_x, position_y))
+
+
+    def draw_outline(self, screen, position_x, position_y):
         pygame.draw.rect(screen, self.color, self.rect, self.border_width)

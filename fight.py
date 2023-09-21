@@ -397,9 +397,10 @@ class Fight(GameClass):
 
         if victory and not self.game_celebration:
             self.game_celebration = True
-            for char in self.player_chars:
+            new_list = [char for char in self.player_chars if char.alive]
+            for char in new_list:
                 char.set_particle_create(self.spawn_particle, None)
-                char.check_for_level_update()
+                char.check_for_level_update(len(self.mobs) * 100)
             for mob in self.mobs:
                 self.spawn_item((mob.position_x, mob.position_y), mob.items)
 

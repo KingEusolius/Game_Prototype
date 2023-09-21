@@ -147,10 +147,10 @@ class Character:
         self.state_machine.trigger_transition(transition)
         # TO DO: refactor code
         if self.ai_turn and not self.actions:
-            if self.nr_actions != self.nr_max_actions:
-                self.nr_actions += 1
-                self.notify_fight()
-            else:
+            #if self.nr_actions != self.nr_max_actions:
+            #    self.nr_actions += 1
+            #    self.notify_fight()
+            #else:
                 self.ai_turn = False
                 self.turn_over = True
 
@@ -168,6 +168,7 @@ class Character:
         self.can_attack = True
         self.can_walk = True
         self.move_range = self.max_move_range
+        self.nr_actions = self.nr_max_actions
         for i in range(len(self.skills_available_this_turn)):
             self.skills_available_this_turn[i] = True
 
@@ -242,8 +243,8 @@ class Character:
             y = point[1] + self.position_y
             pygame.draw.line(screen, color, (x, y), (x, y), 4)
 
-    def check_for_level_update(self):
-        self.exp += 340
+    def check_for_level_update(self, amount):
+        self.exp += amount
         #if self.exp >= self.exp_for_next_level:
         #    self.attack_power += 1
         #    self.exp_for_next_level += 100
